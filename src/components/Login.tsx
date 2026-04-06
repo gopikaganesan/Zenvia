@@ -1,10 +1,10 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
-import { ArrowLeft, Shield, User, Mail, Lock } from "lucide-react";
+import { ArrowLeft, Shield, User, Mail, Lock, CheckCircle2, AlertCircle } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
-import { loginUser, registerUser } from "@/lib/api";
+import { getHealthStatus, loginUser, registerUser } from "@/lib/api";
 import { setAuthSession } from "@/lib/auth";
 
 export function Login() {
@@ -15,6 +15,24 @@ export function Login() {
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [backendOnline, setBackendOnline] = useState<boolean | null>(null);
+  const [checkingBackend, setCheckingBackend] = useState(true);
+
+  const checkBackendStatus = async () => {
+    setCheckingBackend(true);
+    try {
+      await getHealthStatus();
+      setBackendOnline(true);
+    } catch {
+      setBackendOnline(false);
+    } finally {
+      setCheckingBackend(false);
+    }
+  };
+
+  useEffect(() => {
+    checkBackendStatus();
+  }, []);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -30,6 +48,7 @@ export function Login() {
         id: payload.data.id,
         name: payload.data.name,
         email: payload.data.email,
+        avatarUrl: payload.data.avatarUrl,
       });
 
       navigate("/profile");
@@ -41,8 +60,8 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-violet-50 via-pink-50 to-white py-10 px-4">
-      <div className="max-w-md mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-violet-50 via-pink-50 to-white px-4 py-8 sm:py-12 flex items-start sm:items-center justify-center">
+      <div className="w-full max-w-md">
         <button
           onClick={() => navigate("/")}
           className="flex items-center gap-2 text-violet-700 hover:text-violet-900 mb-6"
@@ -51,7 +70,7 @@ export function Login() {
           <span className="text-sm">Back to Home</span>
         </button>
 
-        <Card className="border-violet-200 shadow-xl">
+        <Card className="border-violet-200 shadow-xl rounded-2xl">
           <CardHeader className="text-center">
             <div className="w-12 h-12 rounded-xl mx-auto bg-gradient-to-br from-violet-600 to-pink-500 flex items-center justify-center">
               <Shield className="w-6 h-6 text-white" />
@@ -65,17 +84,51 @@ export function Login() {
                 : "Login to continue your wellness journey"}
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-2 pb-6">
+            <div
+              className={`mb-4 rounded-lg border px-3 py-2 text-sm flex items-center justify-between gap-3 ${
+                checkingBackend
+                  ? "bg-amber-50 border-amber-200 text-amber-700"
+                  : backendOnline
+                  ? "bg-green-50 border-green-200 text-green-700"
+                  : "bg-red-50 border-red-200 text-red-700"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                {checkingBackend ? (
+                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                ) : backendOnline ? (
+                  <CheckCircle2 className="w-4 h-4" />
+                ) : (
+                  <AlertCircle className="w-4 h-4" />
+                )}
+                <span>
+                  {checkingBackend
+                    ? "Checking backend status..."
+                    : backendOnline
+                    ? "Backend online - login and signup available"
+                    : "Backend offline - login/signup may fail"}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={checkBackendStatus}
+                className="underline underline-offset-2 hover:opacity-80"
+              >
+                Retry
+              </button>
+            </div>
+
             <form className="space-y-4" onSubmit={handleSubmit}>
               {isRegisterMode && (
                 <div className="space-y-2">
-                  <label className="text-sm text-gray-600">Name</label>
+                  <label className="text-sm text-gray-600 block">Name</label>
                   <div className="relative">
-                    <User className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
+                    <User className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     <Input
                       value={name}
                       onChange={(event) => setName(event.target.value)}
-                      className="pl-9"
+                      className="pl-10 h-11"
                       placeholder="Your name"
                       required
                     />
@@ -84,14 +137,14 @@ export function Login() {
               )}
 
               <div className="space-y-2">
-                <label className="text-sm text-gray-600">Email</label>
+                <label className="text-sm text-gray-600 block">Email</label>
                 <div className="relative">
-                  <Mail className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
+                  <Mail className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <Input
                     type="email"
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
-                    className="pl-9"
+                    className="pl-10 h-11"
                     placeholder="you@example.com"
                     required
                   />
@@ -99,14 +152,14 @@ export function Login() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm text-gray-600">Password</label>
+                <label className="text-sm text-gray-600 block">Password</label>
                 <div className="relative">
-                  <Lock className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
+                  <Lock className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <Input
                     type="password"
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
-                    className="pl-9"
+                    className="pl-10 h-11"
                     placeholder="••••••••"
                     minLength={6}
                     required
@@ -122,7 +175,7 @@ export function Login() {
 
               <Button
                 type="submit"
-                className="w-full bg-gradient-to-r from-violet-600 to-pink-500"
+                className="w-full h-11 bg-gradient-to-r from-violet-600 to-pink-500"
                 disabled={loading}
               >
                 {loading ? "Please wait..." : isRegisterMode ? "Create Account" : "Login"}
@@ -131,7 +184,7 @@ export function Login() {
 
             <Button
               variant="ghost"
-              className="w-full mt-3"
+              className="w-full mt-3 h-10"
               onClick={() => {
                 setIsRegisterMode((prev) => !prev);
                 setErrorMessage("");

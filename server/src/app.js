@@ -9,6 +9,7 @@ const { authRouter } = require("./routes/auth");
 const communityPostsRouter = require("./routes/communityPosts");
 const sosAlertsRouter = require("./routes/sosAlerts");
 const cycleEntriesRouter = require("./routes/cycleEntries");
+const usersRouter = require("./routes/users");
 
 const app = express();
 
@@ -28,6 +29,7 @@ app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/posts", communityPostsRouter);
 app.use("/api/v1/sos", sosAlertsRouter);
 app.use("/api/v1/cycle-entries", cycleEntriesRouter);
+app.use("/api/v1/users", usersRouter);
 
 app.use((req, res) => {
   res.status(404).json({

@@ -20,6 +20,36 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    avatarUrl: {
+      type: String,
+      default: "",
+    },
+    phone: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    city: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    emergencyContactName: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    emergencyContactPhone: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    bio: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 300,
+    },
   },
   {
     timestamps: true,

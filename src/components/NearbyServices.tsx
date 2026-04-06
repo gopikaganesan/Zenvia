@@ -18,6 +18,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+import { getLocalityEmergencyDetails, type LocalityEmergencyDetails } from "@/lib/emergency";
 
 // ─── Types ──────────────────────────────────────────
 type Place = {
@@ -35,7 +36,10 @@ type Place = {
 };
 
 // ─── Overpass helpers ───────────────────────────────
-const OVERPASS_URL = "https://overpass-api.de/api/interpreter";
+const OVERPASS_ENDPOINTS = [
+  "https://overpass-api.de/api/interpreter",
+  "https://overpass.kumi.systems/api/interpreter",
+];
 
 function buildOverpassQuery(lat: number, lon: number, radiusM: number, tags: string) {
   return `[out:json][timeout:15];(${tags.split("|").map(
@@ -84,10 +88,29 @@ function parsePlaces(data: any, userLat: number, userLon: number): Place[] {
 
 async function fetchPlaces(lat: number, lon: number, tags: string): Promise<Place[]> {
   const query = buildOverpassQuery(lat, lon, 5000, tags);
-  const res = await fetch(OVERPASS_URL, { method: "POST", body: `data=${encodeURIComponent(query)}` });
-  if (!res.ok) throw new Error("Overpass API request failed");
-  const json = await res.json();
-  return parsePlaces(json, lat, lon);
+
+  for (const endpoint of OVERPASS_ENDPOINTS) {
+    try {
+      const body = new URLSearchParams({ data: query }).toString();
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+          Accept: "application/json",
+        },
+        body,
+      });
+      if (!res.ok) {
+        continue;
+      }
+      const json = await res.json();
+      return parsePlaces(json, lat, lon);
+    } catch {
+      continue;
+    }
+  }
+
+  throw new Error("Overpass API request failed");
 }
 
 // ─── Component ──────────────────────────────────────
@@ -102,6 +125,7 @@ export function NearbyServices() {
   const [error, setError] = useState("");
   const [location, setLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [locationLabel, setLocationLabel] = useState("Detecting location…");
+  const [emergencyDetails, setEmergencyDetails] = useState<LocalityEmergencyDetails | null>(null);
 
   const loadData = useCallback(
     async (lat: number, lon: number) => {
@@ -137,6 +161,7 @@ export function NearbyServices() {
         setLocation(coords);
         setLocationLabel(`${coords.lat.toFixed(4)}, ${coords.lon.toFixed(4)}`);
         loadData(coords.lat, coords.lon);
+        getLocalityEmergencyDetails(coords.lat, coords.lon).then(setEmergencyDetails);
       },
       () => {
         setError("Location access denied. Please enable location permissions.");
@@ -162,12 +187,12 @@ export function NearbyServices() {
     <div className="min-h-screen pb-12">
       {/* Header */}
       <div className="bg-gradient-to-br from-blue-500 via-cyan-500 to-blue-600 text-white">
-        <div className="max-w-3xl mx-auto px-4 py-6">
-          <button onClick={() => navigate("/")} className="flex items-center gap-2 text-blue-100 hover:text-white mb-3">
-            <ArrowLeft className="w-4 h-4" /><span className="text-sm">Back</span>
-          </button>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-7">
           <div className="flex items-center gap-3">
-            <MapPin className="w-6 h-6" />
+            <button onClick={() => navigate("/")} className="inline-flex items-center gap-2 text-blue-100 hover:text-white">
+              <ArrowLeft className="w-4 h-4" /><span className="text-sm">Back</span>
+            </button>
+            <MapPin className="w-5 h-5" />
             <div>
               <h1 className="text-2xl" style={{ fontWeight: 700 }}>Nearby Services</h1>
               <p className="text-blue-100 text-sm">Powered by OpenStreetMap</p>
@@ -176,7 +201,7 @@ export function NearbyServices() {
         </div>
       </div>
 
-      <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-7">
         {/* Search + Location */}
         <Card className="border-blue-200 bg-blue-50/50 -mt-4 relative z-10 shadow">
           <CardContent className="pt-5 space-y-3">
@@ -187,7 +212,7 @@ export function NearbyServices() {
                   placeholder="Filter services…"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
+                  className="pl-11"
                 />
               </div>
               <Button onClick={requestLocation} className="bg-blue-600 hover:bg-blue-700" disabled={loading}>
@@ -240,17 +265,34 @@ export function NearbyServices() {
           <CardContent>
             <div className="grid sm:grid-cols-3 gap-2">
               {[
-                { label: "Emergency", sub: "Police / Fire / Ambulance", num: "911", color: "bg-red-600" },
-                { label: "Women's Helpline", sub: "Domestic Violence", num: "1-800-799-7233", color: "bg-purple-600" },
-                { label: "Mental Health", sub: "Crisis Line", num: "988", color: "bg-blue-600" },
+                {
+                  label: "Emergency",
+                  sub: `Police / Fire / Ambulance${emergencyDetails ? ` (${emergencyDetails.localityLabel})` : ""}`,
+                  num: emergencyDetails?.emergencyNumber || "112",
+                  color: "bg-red-600",
+                },
+                {
+                  label: "Women's Helpline",
+                  sub: "Domestic Violence",
+                  num: emergencyDetails?.womensHelpline || "1-800-799-7233",
+                  color: "bg-purple-600",
+                },
+                {
+                  label: "Mental Health",
+                  sub: "Crisis Line",
+                  num: emergencyDetails?.mentalHealthLine || "988",
+                  color: "bg-blue-600",
+                },
               ].map((h) => (
                 <div key={h.num} className="flex items-center justify-between p-3 bg-white rounded-lg border border-red-100">
                   <div>
                     <span className="text-sm" style={{ fontWeight: 600 }}>{h.label}</span>
                     <p className="text-xs text-gray-500">{h.sub}</p>
                   </div>
-                  <Button size="sm" className={`${h.color} text-white`}>
-                    <Phone className="w-3 h-3 mr-1" />{h.num.length <= 3 ? h.num : "Call"}
+                  <Button size="sm" className={`${h.color} text-white`} asChild>
+                    <a href={`tel:${h.num.replace(/\s+/g, "")}`}>
+                      <Phone className="w-3 h-3 mr-1" />{h.num.length <= 4 ? h.num : "Call"}
+                    </a>
                   </Button>
                 </div>
               ))}

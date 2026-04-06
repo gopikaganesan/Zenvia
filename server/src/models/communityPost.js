@@ -31,6 +31,33 @@ const communityPostSchema = new mongoose.Schema(
       type: [mongoose.Schema.Types.ObjectId],
       default: [],
     },
+    comments: {
+      type: [
+        {
+          author: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            required: true,
+          },
+          authorName: {
+            type: String,
+            required: true,
+            trim: true,
+          },
+          content: {
+            type: String,
+            required: true,
+            trim: true,
+            maxlength: 500,
+          },
+          createdAt: {
+            type: Date,
+            default: Date.now,
+          },
+        },
+      ],
+      default: [],
+    },
   },
   {
     timestamps: true,

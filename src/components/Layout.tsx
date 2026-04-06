@@ -14,7 +14,8 @@ import {
   LogIn,
 } from "lucide-react";
 import { Button } from "./ui/button";
-import { clearAuthSession, isAuthenticated } from "@/lib/auth";
+import { clearAuthSession, getStoredUser, isAuthenticated } from "@/lib/auth";
+import { UserAvatar } from "./UserAvatar";
 import { logoutUser } from "@/lib/api";
 
 const navItems = [
@@ -28,11 +29,16 @@ const navItems = [
 export function Layout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [loggedIn, setLoggedIn] = useState(isAuthenticated());
+  const [userAvatar, setUserAvatar] = useState(getStoredUser()?.avatarUrl || "");
+  const [userName, setUserName] = useState(getStoredUser()?.name || "");
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
     setLoggedIn(isAuthenticated());
+    const current = getStoredUser();
+    setUserAvatar(current?.avatarUrl || "");
+    setUserName(current?.name || "");
   }, [location.pathname]);
 
   const handleLogout = async () => {
@@ -41,6 +47,8 @@ export function Layout() {
     } catch {}
     clearAuthSession();
     setLoggedIn(false);
+    setUserAvatar("");
+    setUserName("");
     navigate("/login");
   };
 
@@ -105,9 +113,12 @@ export function Layout() {
                         : ""
                     }`}
                   >
-                    <div className="w-8 h-8 bg-gradient-to-br from-violet-500 to-pink-500 rounded-full flex items-center justify-center">
-                      <User className="w-4 h-4 text-white" />
-                    </div>
+                    <UserAvatar
+                      name={userName || "Profile"}
+                      imageUrl={userAvatar}
+                      seed={userName || "profile"}
+                      className="w-8 h-8 border border-violet-200"
+                    />
                     <span className="hidden sm:inline text-sm">Profile</span>
                   </Button>
                   <Button variant="ghost" size="sm" onClick={handleLogout} className="hidden sm:flex">

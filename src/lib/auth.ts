@@ -2,6 +2,7 @@ export type AuthUser = {
   id: string;
   name: string;
   email: string;
+  avatarUrl?: string;
 };
 
 const TOKEN_KEY = "zenvia_auth_token";
@@ -39,5 +40,13 @@ export function clearAuthSession() {
   try {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
+  } catch {}
+}
+
+export function updateStoredUser(patch: Partial<AuthUser>) {
+  try {
+    const current = getStoredUser();
+    if (!current) return;
+    localStorage.setItem(USER_KEY, JSON.stringify({ ...current, ...patch }));
   } catch {}
 }

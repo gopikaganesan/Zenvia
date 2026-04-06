@@ -26,8 +26,14 @@ import {
 } from "./ui/dialog";
 import { Switch } from "./ui/switch";
 import { Progress } from "./ui/progress";
-import { triggerSOS as apiTriggerSOS, resolveSOS as apiResolveSOS, type SOSAlert } from "@/lib/api";
+import {
+  triggerSOS as apiTriggerSOS,
+  resolveSOS as apiResolveSOS,
+  getNearbyAlerts,
+  type SOSAlert,
+} from "@/lib/api";
 import { isAuthenticated } from "@/lib/auth";
+import { getLocalityEmergencyDetails, type LocalityEmergencyDetails } from "@/lib/emergency";
 
 // ─── Defaults ───────────────────────────────────────
 const defaultContacts = [
@@ -69,6 +75,8 @@ export function SOS() {
   const [newContactPhone, setNewContactPhone] = useState("");
   const [newContactRelation, setNewContactRelation] = useState("");
   const [backendStatus, setBackendStatus] = useState("");
+  const [deliveryVerified, setDeliveryVerified] = useState(false);
+  const [emergencyDetails, setEmergencyDetails] = useState<LocalityEmergencyDetails | null>(null);
 
   // Persist contacts
   useEffect(() => { localStorage.setItem(CONTACTS_KEY, JSON.stringify(contacts)); }, [contacts]);
@@ -77,6 +85,7 @@ export function SOS() {
   const activateSOS = useCallback(async () => {
     setSosActivated(true);
     setAlertSent(true);
+    setDeliveryVerified(false);
 
     // Try sending location to backend
     if (isAuthenticated() && shareLocation && navigator.geolocation) {
@@ -89,7 +98,18 @@ export function SOS() {
               message: selectedMessage,
             });
             setActiveAlertId(res.data._id);
-            setBackendStatus("Alert sent to server");
+            setBackendStatus("Alert sent to server. Verifying for testing...");
+
+            try {
+              const nearby = await getNearbyAlerts(pos.coords.longitude, pos.coords.latitude, 1);
+              const exists = nearby.data.some((alert) => alert._id === res.data._id);
+              setDeliveryVerified(exists);
+              setBackendStatus(exists ? "Alert sent and verified on server" : "Alert sent but not visible in nearby feed yet");
+            } catch {
+              setBackendStatus("Alert sent to server (verification unavailable)");
+            }
+
+            getLocalityEmergencyDetails(pos.coords.latitude, pos.coords.longitude).then(setEmergencyDetails);
           } catch {
             setBackendStatus("Server unreachable – local alert only");
           }
@@ -112,6 +132,7 @@ export function SOS() {
     setSosActivated(false);
     setAlertSent(false);
     setBackendStatus("");
+    setDeliveryVerified(false);
 
     if (activeAlertId) {
       try { await apiResolveSOS(activeAlertId); } catch {}
@@ -145,18 +166,18 @@ export function SOS() {
     <div className="min-h-screen pb-12">
       {/* Header */}
       <div className={`text-white transition-all duration-500 ${sosActivated ? "bg-gradient-to-br from-red-600 via-red-700 to-red-800" : counting ? "bg-gradient-to-br from-orange-500 via-red-500 to-red-600" : "bg-gradient-to-br from-red-500 via-red-600 to-orange-600"}`}>
-        <div className="max-w-3xl mx-auto px-4 py-6">
-          <button onClick={() => navigate("/")} className="flex items-center gap-2 text-red-100 hover:text-white mb-3">
-            <ArrowLeft className="w-4 h-4" /><span className="text-sm">Back</span>
-          </button>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-7">
           <div className="flex items-center gap-3">
-            <AlertTriangle className="w-6 h-6" />
+            <button onClick={() => navigate("/")} className="inline-flex items-center gap-2 text-red-100 hover:text-white">
+              <ArrowLeft className="w-4 h-4" /><span className="text-sm">Back</span>
+            </button>
+            <AlertTriangle className="w-5 h-5" />
             <h1 className="text-2xl" style={{ fontWeight: 700 }}>SOS Emergency</h1>
           </div>
         </div>
       </div>
 
-      <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-7">
         {/* SOS Button */}
         <Card className={`shadow-lg transition-all ${sosActivated ? "border-red-500 bg-red-50" : counting ? "border-orange-400 bg-orange-50" : "border-red-200 bg-red-50/50"}`}>
           <CardContent className="py-8">
@@ -212,6 +233,11 @@ export function SOS() {
                     {backendStatus && (
                       <div className="flex items-center justify-center gap-2 text-gray-500">
                         <Shield className="w-4 h-4" />{backendStatus}
+                      </div>
+                    )}
+                    {deliveryVerified && (
+                      <div className="flex items-center justify-center gap-2 text-green-700">
+                        <CheckCircle className="w-4 h-4" />Server delivery check passed
                       </div>
                     )}
                   </div>
@@ -332,9 +358,24 @@ export function SOS() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <Button className="w-full bg-red-600 hover:bg-red-700 justify-between"><span>Emergency Services</span><span style={{ fontWeight: 700 }}>911</span></Button>
-            <Button className="w-full bg-violet-600 hover:bg-violet-700 justify-between"><span>Women's Helpline</span><span style={{ fontWeight: 700 }}>1-800-799-7233</span></Button>
-            <Button className="w-full bg-blue-600 hover:bg-blue-700 justify-between"><span>Mental Health Crisis</span><span style={{ fontWeight: 700 }}>988</span></Button>
+            <Button className="w-full bg-red-600 hover:bg-red-700 justify-between" asChild>
+              <a href={`tel:${(emergencyDetails?.emergencyNumber || "112").replace(/\s+/g, "")}`}>
+                <span>Emergency Services{emergencyDetails ? ` (${emergencyDetails.localityLabel})` : ""}</span>
+                <span style={{ fontWeight: 700 }}>{emergencyDetails?.emergencyNumber || "112"}</span>
+              </a>
+            </Button>
+            <Button className="w-full bg-violet-600 hover:bg-violet-700 justify-between" asChild>
+              <a href={`tel:${(emergencyDetails?.womensHelpline || "1-800-799-7233").replace(/\s+/g, "")}`}>
+                <span>Women's Helpline</span>
+                <span style={{ fontWeight: 700 }}>{emergencyDetails?.womensHelpline || "1-800-799-7233"}</span>
+              </a>
+            </Button>
+            <Button className="w-full bg-blue-600 hover:bg-blue-700 justify-between" asChild>
+              <a href={`tel:${(emergencyDetails?.mentalHealthLine || "988").replace(/\s+/g, "")}`}>
+                <span>Mental Health Crisis</span>
+                <span style={{ fontWeight: 700 }}>{emergencyDetails?.mentalHealthLine || "988"}</span>
+              </a>
+            </Button>
           </CardContent>
         </Card>
       </div>

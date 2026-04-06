@@ -27,6 +27,13 @@ A privacy-first MERN full-stack application that empowers women with cycle track
 | **Nearby Services** | OpenStreetMap (live) | Discover hospitals, pharmacies, safe spaces via Overpass API |
 | **Auth** | MongoDB + JWT | Register / login / logout with HTTP-only cookie + Bearer token |
 
+### Recent UX updates
+
+- Profile image upload now supports interactive cropping with automatic image compression before save.
+- Community posts preserve multi-line text formatting (line breaks are shown as typed).
+- Main pages now use consistent centered layout spacing and aligned header navigation.
+- Cycle tracker calendar is compact for better readability on mobile and desktop.
+
 ## Quick start
 
 ### 1. Install dependencies

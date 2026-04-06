@@ -58,6 +58,42 @@ router.post("/", async (req, res, next) => {
   }
 });
 
+router.put("/:id", async (req, res, next) => {
+  try {
+    const { periodStartDate, periodEndDate, flowLevel } = req.body;
+    const entry = await CycleEntry.findById(req.params.id);
+
+    if (!entry) {
+      return res.status(404).json({ success: false, message: "Cycle entry not found" });
+    }
+
+    if (!entry.user.equals(req.user._id)) {
+      return res.status(403).json({ success: false, message: "Not authorized" });
+    }
+
+    if (!periodStartDate || !periodEndDate) {
+      return res.status(400).json({ success: false, message: "periodStartDate and periodEndDate are required" });
+    }
+
+    if (!isDateString(periodStartDate) || !isDateString(periodEndDate)) {
+      return res.status(400).json({ success: false, message: "Dates must be YYYY-MM-DD format" });
+    }
+
+    if (new Date(`${periodEndDate}T00:00:00`) < new Date(`${periodStartDate}T00:00:00`)) {
+      return res.status(400).json({ success: false, message: "periodEndDate must be after periodStartDate" });
+    }
+
+    entry.periodStartDate = periodStartDate;
+    entry.periodEndDate = periodEndDate;
+    entry.flowLevel = flowLevel || "medium";
+    await entry.save();
+
+    return res.json({ success: true, data: entry });
+  } catch (err) {
+    return next(err);
+  }
+});
+
 router.delete("/:id", async (req, res, next) => {
   try {
     const entry = await CycleEntry.findById(req.params.id);

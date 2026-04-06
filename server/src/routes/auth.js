@@ -113,6 +113,7 @@ router.post("/register", async (req, res, next) => {
         id: user._id,
         name: user.name,
         email: user.email,
+        avatarUrl: user.avatarUrl,
       },
     });
   } catch (error) {
@@ -158,6 +159,7 @@ router.post("/login", async (req, res, next) => {
         id: user._id,
         name: user.name,
         email: user.email,
+        avatarUrl: user.avatarUrl,
       },
     });
   } catch (error) {
@@ -170,6 +172,35 @@ router.get("/me", authMiddleware, async (req, res) => {
     success: true,
     data: req.user,
   });
+});
+
+router.put("/me", authMiddleware, async (req, res, next) => {
+  try {
+    const allowed = [
+      "name",
+      "avatarUrl",
+      "phone",
+      "city",
+      "emergencyContactName",
+      "emergencyContactPhone",
+      "bio",
+    ];
+
+    for (const key of allowed) {
+      if (typeof req.body[key] !== "undefined") {
+        req.user[key] = req.body[key];
+      }
+    }
+
+    if (!req.user.name || req.user.name.trim().length < 2) {
+      return res.status(400).json({ success: false, message: "Name must be at least 2 characters" });
+    }
+
+    await req.user.save();
+    return res.json({ success: true, data: req.user });
+  } catch (error) {
+    return next(error);
+  }
 });
 
 router.post("/logout", (_req, res) => {

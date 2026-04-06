@@ -9,6 +9,7 @@ import {
   Plus,
   Check,
   Trash2,
+  Pencil,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
@@ -17,6 +18,7 @@ import { Input } from "./ui/input";
 import { CycleOnboarding } from "./CycleOnboarding";
 import {
   createCycleEntry,
+  updateCycleEntry,
   deleteCycleEntry,
   listCycleEntries,
   type CycleEntry as ApiCycleEntry,
@@ -129,6 +131,7 @@ export function CycleTracking() {
   const [flow, setFlow] = useState<"light" | "medium" | "heavy">("medium");
   const [error, setError] = useState("");
   const [showForm, setShowForm] = useState(false);
+  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
 
   const toLocalEntry = (entry: ApiCycleEntry): LocalEntry => ({
     id: entry._id,
@@ -251,27 +254,54 @@ export function CycleTracking() {
     setError("");
 
     try {
-      if (storageMode === "server" && isAuthenticated()) {
-        const response = await createCycleEntry({
-          periodStartDate: startDate,
-          periodEndDate: endDate,
-          flowLevel: flow,
-        });
-        setEntries((prev) => [toLocalEntry(response.data), ...prev]);
+      if (editingEntryId) {
+        if (storageMode === "server" && isAuthenticated()) {
+          const response = await updateCycleEntry(editingEntryId, {
+            periodStartDate: startDate,
+            periodEndDate: endDate,
+            flowLevel: flow,
+          });
+          setEntries((prev) =>
+            prev.map((entry) => (entry.id === editingEntryId ? toLocalEntry(response.data) : entry)),
+          );
+        } else {
+          setEntries((prev) =>
+            prev.map((entry) =>
+              entry.id === editingEntryId
+                ? {
+                    ...entry,
+                    periodStartDate: startDate,
+                    periodEndDate: endDate,
+                    flowLevel: flow,
+                  }
+                : entry,
+            ),
+          );
+        }
       } else {
-        const entry: LocalEntry = {
-          id: Date.now().toString(),
-          periodStartDate: startDate,
-          periodEndDate: endDate,
-          flowLevel: flow,
-          createdAt: new Date().toISOString(),
-        };
-        setEntries((prev) => [entry, ...prev]);
+        if (storageMode === "server" && isAuthenticated()) {
+          const response = await createCycleEntry({
+            periodStartDate: startDate,
+            periodEndDate: endDate,
+            flowLevel: flow,
+          });
+          setEntries((prev) => [toLocalEntry(response.data), ...prev]);
+        } else {
+          const entry: LocalEntry = {
+            id: Date.now().toString(),
+            periodStartDate: startDate,
+            periodEndDate: endDate,
+            flowLevel: flow,
+            createdAt: new Date().toISOString(),
+          };
+          setEntries((prev) => [entry, ...prev]);
+        }
       }
 
       setStartDate("");
       setEndDate("");
       setShowForm(false);
+      setEditingEntryId(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save entry");
     }
@@ -288,15 +318,25 @@ export function CycleTracking() {
     }
   };
 
+  const editEntry = (entry: LocalEntry) => {
+    setStartDate(entry.periodStartDate);
+    setEndDate(entry.periodEndDate);
+    setFlow(entry.flowLevel);
+    setEditingEntryId(entry.id);
+    setShowForm(true);
+  };
+
   if (!isOnboarded) {
     return (
       <div className="min-h-screen pb-12">
         <div className="bg-gradient-to-br from-pink-500 to-rose-500 text-white">
-          <div className="max-w-3xl mx-auto px-4 py-8">
-            <button onClick={() => navigate("/")} className="flex items-center gap-2 text-pink-100 hover:text-white mb-4">
-              <ArrowLeft className="w-4 h-4" /><span className="text-sm">Back</span>
-            </button>
-            <h1 className="text-2xl" style={{ fontWeight: 700 }}>Cycle Tracking</h1>
+            <div className="max-w-4xl mx-auto px-4 sm:px-6 py-7">
+              <div className="flex items-center gap-3">
+                <button onClick={() => navigate("/")} className="inline-flex items-center gap-2 text-pink-100 hover:text-white">
+                  <ArrowLeft className="w-4 h-4" /><span className="text-sm">Back</span>
+                </button>
+                <h1 className="text-2xl" style={{ fontWeight: 700 }}>Cycle Tracking</h1>
+              </div>
           </div>
         </div>
         <div className="max-w-3xl mx-auto px-4 py-8">
@@ -310,13 +350,13 @@ export function CycleTracking() {
     <div className="min-h-screen pb-12">
       {/* Header */}
       <div className="bg-gradient-to-br from-pink-500 to-rose-500 text-white">
-        <div className="max-w-3xl mx-auto px-4 py-6">
-          <button onClick={() => navigate("/")} className="flex items-center gap-2 text-pink-100 hover:text-white mb-3">
-            <ArrowLeft className="w-4 h-4" /><span className="text-sm">Back</span>
-          </button>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-7">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Droplet className="w-6 h-6" />
+              <button onClick={() => navigate("/")} className="inline-flex items-center gap-2 text-pink-100 hover:text-white">
+                <ArrowLeft className="w-4 h-4" /><span className="text-sm">Back</span>
+              </button>
+              <Droplet className="w-5 h-5" />
               <h1 className="text-2xl" style={{ fontWeight: 700 }}>Cycle Tracking</h1>
             </div>
             <Badge className="bg-white/20 text-white border-0">
@@ -326,7 +366,7 @@ export function CycleTracking() {
         </div>
       </div>
 
-      <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-7">
         {/* Phase summary strip */}
         <Card className="border-pink-200">
           <CardContent className="py-4">
@@ -344,7 +384,7 @@ export function CycleTracking() {
         </Card>
 
         {/* Calendar */}
-        <Card>
+        <Card className="max-w-lg mx-auto w-full">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <Button variant="ghost" size="sm" onClick={prevMonth}><ChevronLeft className="w-4 h-4" /></Button>
@@ -359,13 +399,13 @@ export function CycleTracking() {
             {syncMessage && <p className="text-xs text-amber-600 mb-2">{syncMessage}</p>}
 
             {/* Weekday headers */}
-            <div className="grid grid-cols-7 text-center mb-1">
+            <div className="grid text-center mb-1" style={{ gridTemplateColumns: "repeat(7, minmax(0, 1fr))" }}>
               {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((d) => (
                 <span key={d} className="text-xs text-gray-400 py-1">{d}</span>
               ))}
             </div>
             {/* Day cells */}
-            <div className="grid grid-cols-7 gap-1">
+            <div className="grid gap-0.5" style={{ gridTemplateColumns: "repeat(7, minmax(0, 1fr))" }}>
               {calendarCells.map((cell) => {
                 const key = cell.key;
                 const isSelected = key === selectedDate;
@@ -388,7 +428,7 @@ export function CycleTracking() {
                   <button
                     key={key}
                     onClick={() => setSelectedDate(key)}
-                    className={`relative w-full h-9 md:h-10 flex items-center justify-center rounded-full text-sm transition-all ${bg} ${ring} ${
+                    className={`relative w-full aspect-square min-h-7 md:min-h-8 flex items-center justify-center rounded-full text-[11px] md:text-xs transition-all ${bg} ${ring} ${
                       !bg && !isSelected ? "hover:bg-gray-100" : ""
                     } ${
                       !cell.inCurrentMonth ? "text-gray-300" : ""
@@ -420,7 +460,7 @@ export function CycleTracking() {
           <Card className="border-pink-200">
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">
-                <CalendarIcon className="w-4 h-4 text-pink-600" />Log Period
+                <CalendarIcon className="w-4 h-4 text-pink-600" />{editingEntryId ? "Edit Period" : "Log Period"}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -449,8 +489,22 @@ export function CycleTracking() {
               </div>
               {error && <p className="text-xs text-red-600">{error}</p>}
               <div className="flex gap-2">
-                <Button onClick={handleSave} className="flex-1 bg-pink-600 hover:bg-pink-700">Save</Button>
-                <Button variant="outline" onClick={() => setShowForm(false)} className="flex-1">Cancel</Button>
+                <Button onClick={handleSave} className="flex-1 bg-pink-600 hover:bg-pink-700">
+                  {editingEntryId ? "Update" : "Save"}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowForm(false);
+                    setEditingEntryId(null);
+                    setStartDate("");
+                    setEndDate("");
+                    setFlow("medium");
+                  }}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -464,7 +518,7 @@ export function CycleTracking() {
             </CardHeader>
             <CardContent className="space-y-2">
               {sortedEntries.slice(0, 8).map((e) => (
-                <div key={e.id} className="flex items-center justify-between border rounded-lg px-3 py-2">
+                <div key={e.id} className="flex items-center justify-between border rounded-lg px-3 py-2 gap-2">
                   <div>
                     <p className="text-sm" style={{ fontWeight: 500 }}>
                       {new Date(e.periodStartDate + "T00:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric" })}
@@ -473,9 +527,14 @@ export function CycleTracking() {
                     </p>
                     <p className="text-xs text-gray-500">Flow: {e.flowLevel}</p>
                   </div>
-                  <Button variant="ghost" size="sm" onClick={() => deleteEntry(e.id)} className="text-gray-400 hover:text-red-600">
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="sm" onClick={() => editEntry(e)} className="text-gray-400 hover:text-violet-600">
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => deleteEntry(e.id)} className="text-gray-400 hover:text-red-600">
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
               ))}
             </CardContent>

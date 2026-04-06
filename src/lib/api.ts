@@ -12,18 +12,49 @@ export type AuthPayload = {
   success: boolean;
   message: string;
   token: string;
-  data: { id: string; name: string; email: string };
+  data: { id: string; name: string; email: string; avatarUrl?: string };
+};
+
+export type CurrentUserResponse = {
+  _id: string;
+  name: string;
+  email: string;
+  avatarUrl?: string;
+  phone?: string;
+  city?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  bio?: string;
 };
 
 export type CommunityPost = {
   _id: string;
   author: string;
   authorName: string;
+  authorAvatarUrl?: string;
   category: string;
   content: string;
   likes: number;
   likedBy: string[];
+  comments: {
+    _id: string;
+    author: string;
+    authorName: string;
+    authorAvatarUrl?: string;
+    content: string;
+    createdAt: string;
+  }[];
   createdAt: string;
+};
+
+export type PublicUserProfile = {
+  _id: string;
+  name: string;
+  avatarUrl?: string;
+  city?: string;
+  bio?: string;
+  memberSince: string;
+  postsCount: number;
 };
 
 export type SOSAlert = {
@@ -63,9 +94,44 @@ async function apiRequest<T>(path: string, options: ApiOptions = {}): Promise<T>
     body: options.body ? JSON.stringify(options.body) : undefined,
   });
 
-  const payload = await response.json();
-  if (!response.ok) throw new Error(payload.message || "Request failed");
-  return payload as T;
+  const contentType = response.headers.get("content-type") || "";
+  const rawBody = await response.text();
+
+  let payload: unknown = null;
+  if (rawBody && contentType.includes("application/json")) {
+    try {
+      payload = JSON.parse(rawBody);
+    } catch {
+      payload = null;
+    }
+  }
+
+  if (!response.ok) {
+    const messageFromPayload =
+      payload && typeof payload === "object" && "message" in payload
+        ? String((payload as { message?: unknown }).message || "")
+        : "";
+
+    if (messageFromPayload) {
+      throw new Error(messageFromPayload);
+    }
+
+    if (rawBody && contentType.includes("text/html")) {
+      throw new Error("Unable to reach API server. Ensure backend is running on port 5000.");
+    }
+
+    throw new Error(rawBody || `Request failed (${response.status})`);
+  }
+
+  if (!rawBody) {
+    return {} as T;
+  }
+
+  if (payload !== null) {
+    return payload as T;
+  }
+
+  return { success: true, message: rawBody } as T;
 }
 
 // ─── Health ──────────────────────────────────────────────────
@@ -83,9 +149,24 @@ export function loginUser(input: { email: string; password: string }) {
 }
 
 export function getCurrentUser() {
-  return apiRequest<{ success: boolean; data: { _id: string; name: string; email: string } }>(
+  return apiRequest<{ success: boolean; data: CurrentUserResponse }>(
     "/api/v1/auth/me",
   );
+}
+
+export function updateCurrentUser(input: {
+  name?: string;
+  avatarUrl?: string;
+  phone?: string;
+  city?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  bio?: string;
+}) {
+  return apiRequest<{ success: boolean; data: CurrentUserResponse }>("/api/v1/auth/me", {
+    method: "PUT",
+    body: input,
+  });
 }
 
 export function logoutUser() {
@@ -93,8 +174,9 @@ export function logoutUser() {
 }
 
 // ─── Community Posts ─────────────────────────────────────────
-export function listPosts() {
-  return apiRequest<{ success: boolean; count: number; data: CommunityPost[] }>("/api/v1/posts");
+export function listPosts(category = "All") {
+  const query = category && category !== "All" ? `?category=${encodeURIComponent(category)}` : "";
+  return apiRequest<{ success: boolean; count: number; data: CommunityPost[] }>(`/api/v1/posts${query}`);
 }
 
 export function createPost(input: { content: string; category?: string }) {
@@ -114,6 +196,26 @@ export function deletePost(id: string) {
   return apiRequest<{ success: boolean; message: string }>(`/api/v1/posts/${id}`, {
     method: "DELETE",
   });
+}
+
+export function addComment(postId: string, content: string) {
+  return apiRequest<{ success: boolean; data: CommunityPost }>(`/api/v1/posts/${postId}/comments`, {
+    method: "POST",
+    body: { content },
+  });
+}
+
+export function deleteComment(postId: string, commentId: string) {
+  return apiRequest<{ success: boolean; data: CommunityPost }>(
+    `/api/v1/posts/${postId}/comments/${commentId}`,
+    {
+      method: "DELETE",
+    },
+  );
+}
+
+export function getPublicProfile(userId: string) {
+  return apiRequest<{ success: boolean; data: PublicUserProfile }>(`/api/v1/users/${userId}/public`);
 }
 
 // ─── SOS Alerts ──────────────────────────────────────────────
@@ -155,5 +257,19 @@ export function createCycleEntry(input: {
 export function deleteCycleEntry(id: string) {
   return apiRequest<{ success: boolean; message: string }>(`/api/v1/cycle-entries/${id}`, {
     method: "DELETE",
+  });
+}
+
+export function updateCycleEntry(
+  id: string,
+  input: {
+    periodStartDate: string;
+    periodEndDate: string;
+    flowLevel: "light" | "medium" | "heavy";
+  },
+) {
+  return apiRequest<{ success: boolean; data: CycleEntry }>(`/api/v1/cycle-entries/${id}`, {
+    method: "PUT",
+    body: input,
   });
 }
