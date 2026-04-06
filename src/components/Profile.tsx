@@ -153,7 +153,7 @@ export function Profile() {
   return (
     <div className="min-h-screen pb-12">
       <div className="bg-gradient-to-br from-violet-600 to-pink-500 text-white">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-7">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10">
           <div className="flex items-center gap-3">
             <button onClick={() => navigate("/")} className="inline-flex items-center gap-2 text-violet-100 hover:text-white">
               <ArrowLeft className="w-4 h-4" /><span className="text-sm">Back</span>
@@ -163,7 +163,7 @@ export function Profile() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 space-y-8">
         {error && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">{error}</p>}
         {success && <p className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg p-3">{success}</p>}
 

@@ -80,11 +80,12 @@ export function Community() {
   useEffect(() => { fetchPosts(activeFilter); }, [activeFilter]);
 
   const handlePost = async () => {
-    if (!newContent.trim()) return;
+    const normalized = newContent.replace(/\r\n/g, "\n");
+    if (!normalized.trim()) return;
     setPosting(true);
     setError("");
     try {
-      await createPost({ content: newContent.trim(), category: newCategory });
+      await createPost({ content: normalized, category: newCategory });
       setNewContent("");
       await fetchPosts(activeFilter);
     } catch (err) {
@@ -109,8 +110,8 @@ export function Community() {
   };
 
   const handleAddComment = async (postId: string) => {
-    const draft = commentDrafts[postId]?.trim();
-    if (!draft) return;
+    const draft = (commentDrafts[postId] || "").replace(/\r\n/g, "\n");
+    if (!draft.trim()) return;
 
     try {
       const res = await addComment(postId, draft);
@@ -151,7 +152,7 @@ export function Community() {
     <div className="min-h-screen pb-12">
       {/* Header */}
       <div className="bg-gradient-to-br from-violet-500 via-purple-500 to-indigo-600 text-white">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-7">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10">
           <div className="flex items-center gap-3">
             <button onClick={() => navigate("/")} className="inline-flex items-center gap-2 text-violet-100 hover:text-white">
               <ArrowLeft className="w-4 h-4" /><span className="text-sm">Back</span>
@@ -162,11 +163,11 @@ export function Community() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-7">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 space-y-8">
         {/* Compose */}
         {isAuthenticated() ? (
           <Card className="border-violet-200">
-            <CardContent className="pt-4 space-y-2.5">
+            <CardContent className="pt-5 space-y-3 pb-5">
               <Textarea
                 placeholder="Share something with the community…"
                 value={newContent}
@@ -194,7 +195,7 @@ export function Community() {
           </Card>
         ) : (
           <Card className="border-violet-200 bg-violet-50">
-            <CardContent className="py-4 text-center">
+            <CardContent className="py-5 text-center">
               <p className="text-sm text-gray-600 mb-2">Log in to share posts</p>
               <Button size="sm" onClick={() => navigate("/login")} className="bg-violet-600 hover:bg-violet-700">Login</Button>
             </CardContent>
@@ -204,7 +205,7 @@ export function Community() {
         {error && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">{error}</p>}
 
         <Card className="border-violet-200">
-          <CardContent className="pt-3 pb-3">
+          <CardContent className="pt-4 pb-4">
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <p className="text-sm font-medium text-gray-700">Filter posts</p>
               <select
@@ -229,7 +230,7 @@ export function Community() {
         ) : (
           posts.map((post) => (
             <Card key={post._id} className="hover:shadow-sm transition-shadow">
-              <CardContent className="pt-4 space-y-2.5">
+              <CardContent className="pt-5 pb-5 space-y-3">
                 <div className="flex items-start gap-3">
                   <button
                     onClick={() => openProfile(post.author)}
@@ -250,7 +251,7 @@ export function Community() {
                     <Badge variant="outline" className="text-xs">{post.category}</Badge>
                   </div>
                 </div>
-                <p className="text-sm text-gray-700 whitespace-pre-wrap break-words">{post.content}</p>
+                <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap break-words">{post.content.replace(/\\n/g, "\n")}</p>
                 <div className="flex items-center gap-2 pt-2 border-t">
                   <Button variant="ghost" size="sm" onClick={() => handleLike(post._id)}
                     className={post.likedBy.includes(userId || "") ? "text-pink-600 h-8" : "h-8"}
@@ -292,7 +293,7 @@ export function Community() {
                               </button>
                               <div className="min-w-0">
                                 <p className="text-xs text-gray-800" style={{ fontWeight: 600 }}>{comment.authorName}</p>
-                                <p className="text-sm text-gray-700 whitespace-pre-wrap break-words">{comment.content}</p>
+                                <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap break-words">{comment.content.replace(/\\n/g, "\n")}</p>
                                 <p className="text-[11px] text-gray-400 mt-0.5">{timeAgo(comment.createdAt)}</p>
                               </div>
                             </div>

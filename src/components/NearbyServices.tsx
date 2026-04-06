@@ -187,7 +187,7 @@ export function NearbyServices() {
     <div className="min-h-screen pb-12">
       {/* Header */}
       <div className="bg-gradient-to-br from-blue-500 via-cyan-500 to-blue-600 text-white">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-7">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10">
           <div className="flex items-center gap-3">
             <button onClick={() => navigate("/")} className="inline-flex items-center gap-2 text-blue-100 hover:text-white">
               <ArrowLeft className="w-4 h-4" /><span className="text-sm">Back</span>
@@ -201,7 +201,7 @@ export function NearbyServices() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-7">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 space-y-8">
         {/* Search + Location */}
         <Card className="border-blue-200 bg-blue-50/50 -mt-4 relative z-10 shadow">
           <CardContent className="pt-5 space-y-3">

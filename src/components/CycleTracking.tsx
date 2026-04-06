@@ -330,7 +330,7 @@ export function CycleTracking() {
     return (
       <div className="min-h-screen pb-12">
         <div className="bg-gradient-to-br from-pink-500 to-rose-500 text-white">
-            <div className="max-w-4xl mx-auto px-4 sm:px-6 py-7">
+            <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10">
               <div className="flex items-center gap-3">
                 <button onClick={() => navigate("/")} className="inline-flex items-center gap-2 text-pink-100 hover:text-white">
                   <ArrowLeft className="w-4 h-4" /><span className="text-sm">Back</span>
@@ -339,7 +339,7 @@ export function CycleTracking() {
               </div>
           </div>
         </div>
-        <div className="max-w-3xl mx-auto px-4 py-8">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10">
           <CycleOnboarding onComplete={handleOnboardingComplete} />
         </div>
       </div>
@@ -350,7 +350,7 @@ export function CycleTracking() {
     <div className="min-h-screen pb-12">
       {/* Header */}
       <div className="bg-gradient-to-br from-pink-500 to-rose-500 text-white">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-7">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <button onClick={() => navigate("/")} className="inline-flex items-center gap-2 text-pink-100 hover:text-white">
@@ -366,7 +366,7 @@ export function CycleTracking() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-7">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 space-y-8">
         {/* Phase summary strip */}
         <Card className="border-pink-200">
           <CardContent className="py-4">

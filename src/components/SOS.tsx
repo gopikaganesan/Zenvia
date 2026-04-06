@@ -166,7 +166,7 @@ export function SOS() {
     <div className="min-h-screen pb-12">
       {/* Header */}
       <div className={`text-white transition-all duration-500 ${sosActivated ? "bg-gradient-to-br from-red-600 via-red-700 to-red-800" : counting ? "bg-gradient-to-br from-orange-500 via-red-500 to-red-600" : "bg-gradient-to-br from-red-500 via-red-600 to-orange-600"}`}>
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-7">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10">
           <div className="flex items-center gap-3">
             <button onClick={() => navigate("/")} className="inline-flex items-center gap-2 text-red-100 hover:text-white">
               <ArrowLeft className="w-4 h-4" /><span className="text-sm">Back</span>
@@ -177,7 +177,7 @@ export function SOS() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-7">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 space-y-8">
         {/* SOS Button */}
         <Card className={`shadow-lg transition-all ${sosActivated ? "border-red-500 bg-red-50" : counting ? "border-orange-400 bg-orange-50" : "border-red-200 bg-red-50/50"}`}>
           <CardContent className="py-8">

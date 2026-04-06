@@ -51,7 +51,7 @@ export function Home() {
     <div className="min-h-screen">
       {/* Hero — clean, text-focused like MongoDB */}
       <section className="bg-gradient-to-br from-violet-600 via-purple-600 to-pink-500 text-white">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-18 md:py-22">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-24">
           <h1 className="text-4xl md:text-5xl mb-4 leading-tight" style={{ fontWeight: 700 }}>
             Your wellness.<br />Your safety.
           </h1>
@@ -79,7 +79,7 @@ export function Home() {
       </section>
 
       {/* Feature cards — flat, minimal */}
-      <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-18 pb-14">
+      <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16">
         <h2 className="text-2xl mb-10 text-gray-900" style={{ fontWeight: 700 }}>Features</h2>
         <div className="grid sm:grid-cols-2 gap-4">
           {features.map((f) => {
@@ -100,7 +100,7 @@ export function Home() {
       </section>
 
       {/* Privacy note */}
-      <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-18">
+      <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-20">
         <div className="rounded-xl border border-violet-200 bg-violet-50 p-6">
           <h3 className="text-base mb-2 text-violet-800" style={{ fontWeight: 600 }}>Privacy by design</h3>
           <p className="text-sm text-violet-700">
