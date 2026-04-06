@@ -26,6 +26,16 @@ const navItems = [
   { to: "/sos", label: "SOS", icon: AlertTriangle },
 ];
 
+function getPageTitle(pathname: string) {
+  if (pathname === "/") return "Zenvia | Home";
+  if (pathname.startsWith("/cycle-tracking")) return "Zenvia | Cycle Tracker";
+  if (pathname.startsWith("/nearby-services")) return "Zenvia | Nearby Services";
+  if (pathname.startsWith("/community")) return "Zenvia | Community";
+  if (pathname.startsWith("/sos")) return "Zenvia | SOS Emergency";
+  if (pathname.startsWith("/profile")) return "Zenvia | Profile";
+  return "Zenvia";
+}
+
 export function Layout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [loggedIn, setLoggedIn] = useState(isAuthenticated());
@@ -39,6 +49,7 @@ export function Layout() {
     const current = getStoredUser();
     setUserAvatar(current?.avatarUrl || "");
     setUserName(current?.name || "");
+    document.title = getPageTitle(location.pathname);
   }, [location.pathname]);
 
   const handleLogout = async () => {

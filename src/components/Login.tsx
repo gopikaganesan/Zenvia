@@ -18,6 +18,10 @@ export function Login() {
   const [backendOnline, setBackendOnline] = useState<boolean | null>(null);
   const [checkingBackend, setCheckingBackend] = useState(true);
 
+  useEffect(() => {
+    document.title = isRegisterMode ? "Zenvia | Create Account" : "Zenvia | Login";
+  }, [isRegisterMode]);
+
   const checkBackendStatus = async () => {
     setCheckingBackend(true);
     try {
