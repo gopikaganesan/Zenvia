@@ -151,8 +151,8 @@ export function Community() {
   return (
     <div className="min-h-screen pb-12">
       {/* Header */}
-      <div className="bg-gradient-to-br from-violet-500 via-purple-500 to-indigo-600 text-white">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10">
+      <div className="bg-gradient-to-br from-violet-500 via-purple-500 to-indigo-600 text-white mb-10">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3">
           <div className="flex items-center gap-3">
             <button onClick={() => navigate("/")} className="inline-flex items-center gap-2 text-violet-100 hover:text-white">
               <ArrowLeft className="w-4 h-4" /><span className="text-sm">Back</span>
@@ -163,11 +163,11 @@ export function Community() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 space-y-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 space-y-8 mb-10">
         {/* Compose */}
         {isAuthenticated() ? (
-          <Card className="border-violet-200">
-            <CardContent className="pt-5 space-y-3 pb-5">
+          <Card className="border-violet-200 mb-10">
+            <CardContent className="space-y-3 py-6">
               <Textarea
                 placeholder="Share something with the community…"
                 value={newContent}
@@ -194,8 +194,8 @@ export function Community() {
             </CardContent>
           </Card>
         ) : (
-          <Card className="border-violet-200 bg-violet-50">
-            <CardContent className="py-5 text-center">
+          <Card className="border-violet-200 bg-violet-50 mb-6">
+            <CardContent className="py-3 text-center">
               <p className="text-sm text-gray-600 mb-2">Log in to share posts</p>
               <Button size="sm" onClick={() => navigate("/login")} className="bg-violet-600 hover:bg-violet-700">Login</Button>
             </CardContent>
@@ -204,8 +204,8 @@ export function Community() {
 
         {error && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">{error}</p>}
 
-        <Card className="border-violet-200">
-          <CardContent className="pt-4 pb-4">
+        <Card className="border-violet-200 mb-3">
+          <CardContent className="py-3">
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <p className="text-sm font-medium text-gray-700">Filter posts</p>
               <select
@@ -229,12 +229,12 @@ export function Community() {
           <p className="text-sm text-gray-400 text-center py-8">No posts yet. Be the first!</p>
         ) : (
           posts.map((post) => (
-            <Card key={post._id} className="hover:shadow-sm transition-shadow">
-              <CardContent className="pt-5 pb-5 space-y-3">
+            <Card key={post._id} className="hover:shadow-sm transition-shadow mt-4">
+              <CardContent className="py-6 space-y-3">
                 <div className="flex items-start gap-3">
                   <button
                     onClick={() => openProfile(post.author)}
-                    className="flex items-center gap-2.5 min-w-0 text-left flex-1"
+                    className="flex items-center gap-3 min-w-0 text-left flex-1"
                   >
                     <UserAvatar
                       name={post.authorName}
@@ -252,7 +252,7 @@ export function Community() {
                   </div>
                 </div>
                 <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap break-words">{post.content.replace(/\\n/g, "\n")}</p>
-                <div className="flex items-center gap-2 pt-2 border-t">
+                <div className="flex items-center gap-2 py-2 border-t">
                   <Button variant="ghost" size="sm" onClick={() => handleLike(post._id)}
                     className={post.likedBy.includes(userId || "") ? "text-pink-600 h-8" : "h-8"}
                   >

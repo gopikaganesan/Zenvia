@@ -187,7 +187,7 @@ export function NearbyServices() {
     <div className="min-h-screen pb-12">
       {/* Header */}
       <div className="bg-gradient-to-br from-blue-500 via-cyan-500 to-blue-600 text-white">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3 mb-10">
           <div className="flex items-center gap-3">
             <button onClick={() => navigate("/")} className="inline-flex items-center gap-2 text-blue-100 hover:text-white">
               <ArrowLeft className="w-4 h-4" /><span className="text-sm">Back</span>
@@ -201,9 +201,9 @@ export function NearbyServices() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 space-y-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 space-y-8 mb-10">
         {/* Search + Location */}
-        <Card className="border-blue-200 bg-blue-50/50 -mt-4 relative z-10 shadow">
+        <Card className="border-blue-200 bg-blue-50/50 -mt-4 relative z-10 shadow pt-6 mb-6">
           <CardContent className="pt-5 space-y-3">
             <div className="flex gap-3">
               <div className="flex-1 relative">
@@ -212,7 +212,7 @@ export function NearbyServices() {
                   placeholder="Filter services…"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-11"
+                  className="px-10 py-2"
                 />
               </div>
               <Button onClick={requestLocation} className="bg-blue-600 hover:bg-blue-700" disabled={loading}>
@@ -226,7 +226,7 @@ export function NearbyServices() {
           </CardContent>
         </Card>
 
-        {error && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">{error}</p>}
+        {error && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3 mb-6">{error}</p>}
 
         {/* Tabs */}
         <Tabs value={tab} onValueChange={setTab} className="space-y-4">
@@ -301,7 +301,7 @@ export function NearbyServices() {
         </Card>
 
         {/* Attribution */}
-        <p className="text-center text-xs text-gray-400">
+        <p className="text-center text-xs text-gray-400 mt-6">
           Data from{" "}
           <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-600">
             OpenStreetMap

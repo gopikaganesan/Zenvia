@@ -67,7 +67,7 @@ export function Layout() {
     <div className="min-h-screen bg-background">
       {/* Top Navigation */}
       <header className="bg-white/90 backdrop-blur-md border-b border-purple-100 sticky top-0 z-50 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <NavLink to="/" className="flex items-center gap-3">
@@ -93,7 +93,7 @@ export function Layout() {
                   <NavLink
                     key={item.to}
                     to={item.to}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 ${
+                    className={`flex items-center gap-2 px-4 py-3 rounded-lg transition-all duration-200 ${
                       isSOS
                         ? isActive
                           ? "bg-red-600 text-white shadow-lg shadow-red-200"
@@ -118,10 +118,10 @@ export function Layout() {
                     variant="ghost"
                     size="sm"
                     onClick={() => navigate("/profile")}
-                    className={`flex items-center gap-2 ${
+                    className={`flex items-center gap-2  ${
                       location.pathname === "/profile"
-                        ? "bg-violet-100 text-violet-800"
-                        : ""
+                        ? "bg-violet-100 text-violet-800 py-6"
+                        : "py-6"
                     }`}
                   >
                     <UserAvatar
@@ -138,7 +138,7 @@ export function Layout() {
                 </>
               ) : (
                 <Button variant="ghost" size="sm" onClick={() => navigate("/login")}
-                  className={location.pathname === "/login" ? "bg-violet-100 text-violet-800" : ""}
+                  className={location.pathname === "/login" ? "bg-violet-100 text-violet-800 " : "py-6 px-3"}
                 >
                   <LogIn className="w-4 h-4 mr-2" />
                   <span className="text-sm">Login</span>
@@ -201,7 +201,7 @@ export function Layout() {
 
       {/* Footer */}
       <footer className="bg-white border-t border-purple-100 mt-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <div className="w-7 h-7 bg-gradient-to-br from-violet-600 to-pink-500 rounded-lg flex items-center justify-center">
@@ -209,7 +209,7 @@ export function Layout() {
               </div>
               <span className="text-sm bg-gradient-to-r from-violet-700 to-pink-600 bg-clip-text text-transparent" style={{ fontWeight: 700 }}>Zenvia</span>
             </div>
-            <nav className="flex flex-wrap justify-center gap-4 text-xs text-gray-500">
+            <nav className="flex flex-wrap justify-center gap-6 text-xs text-gray-500 py-6">
               <NavLink to="/cycle-tracking" className="hover:text-violet-700">Cycle Tracker</NavLink>
               <NavLink to="/nearby-services" className="hover:text-violet-700">Nearby Services</NavLink>
               <NavLink to="/community" className="hover:text-violet-700">Community</NavLink>
