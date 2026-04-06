@@ -165,8 +165,8 @@ export function SOS() {
   return (
     <div className="min-h-screen pb-12">
       {/* Header */}
-      <div className={`text-white transition-all duration-500 ${sosActivated ? "bg-gradient-to-br from-red-600 via-red-700 to-red-800" : counting ? "bg-gradient-to-br from-orange-500 via-red-500 to-red-600" : "bg-gradient-to-br from-red-500 via-red-600 to-orange-600"}`}>
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10">
+      <div className={`text-white mb-10 transition-all duration-500 ${sosActivated ? "bg-gradient-to-br from-red-600 via-red-700 to-red-800" : counting ? "bg-gradient-to-br from-orange-500 via-red-500 to-red-600" : "bg-gradient-to-br from-red-500 via-red-600 to-orange-600"}`}>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3">
           <div className="flex items-center gap-3">
             <button onClick={() => navigate("/")} className="inline-flex items-center gap-2 text-red-100 hover:text-white">
               <ArrowLeft className="w-4 h-4" /><span className="text-sm">Back</span>
@@ -179,14 +179,14 @@ export function SOS() {
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 space-y-8">
         {/* SOS Button */}
-        <Card className={`shadow-lg transition-all ${sosActivated ? "border-red-500 bg-red-50" : counting ? "border-orange-400 bg-orange-50" : "border-red-200 bg-red-50/50"}`}>
+        <Card className={`shadow-lg transition-all mb-10 ${sosActivated ? "border-red-500 bg-red-50" : counting ? "border-orange-400 bg-orange-50" : "border-red-200 bg-red-50/50"}`}>
           <CardContent className="py-8">
             <div className="text-center">
               {/* Idle */}
               {!counting && !sosActivated && (
                 <>
                   <p className="text-gray-600 mb-6 text-sm">Press the SOS button to alert your emergency contacts and nearby services.</p>
-                  <button onClick={startCountdown} className="w-36 h-36 rounded-full bg-gradient-to-br from-red-500 to-red-700 text-white mx-auto flex items-center justify-center shadow-2xl shadow-red-300 hover:scale-105 active:scale-95 transition-all border-4 border-red-300">
+                  <button onClick={startCountdown} className="w-42 h-42 py-6 px-10 rounded-full bg-gradient-to-br from-red-500 to-red-700 text-white mx-auto flex items-center justify-center shadow-2xl shadow-red-300 hover:scale-105 active:scale-95 transition-all border-4 border-red-300">
                     <div className="text-center">
                       <Siren className="w-10 h-10 mx-auto mb-1" />
                       <span className="text-xl" style={{ fontWeight: 700 }}>SOS</span>
@@ -202,10 +202,10 @@ export function SOS() {
               {counting && (
                 <>
                   <p className="text-orange-700 mb-4" style={{ fontWeight: 600 }}>Alert sending in…</p>
-                  <div className="w-36 h-36 rounded-full bg-gradient-to-br from-orange-500 to-red-600 text-white mx-auto flex items-center justify-center shadow-2xl shadow-orange-300 animate-pulse border-4 border-orange-300">
+                  <div className="w-36 h-36 mb-4 rounded-full bg-gradient-to-br from-orange-500 to-red-600 text-white mx-auto flex items-center justify-center shadow-2xl shadow-orange-300 animate-pulse border-4 border-orange-300">
                     <span className="text-5xl" style={{ fontWeight: 700 }}>{countdown}</span>
                   </div>
-                  <Progress value={((5 - countdown) / 5) * 100} className="h-2 max-w-xs mx-auto mt-5" />
+                  <Progress value={((5 - countdown) / 5) * 100} className="h-2 max-w-xs mx-auto mt-6 mb-6" />
                   <Button variant="outline" className="mt-5 border-orange-400 text-orange-700" onClick={cancelSOS}>
                     <X className="w-4 h-4 mr-1" />Cancel
                   </Button>
@@ -215,13 +215,13 @@ export function SOS() {
               {/* Active */}
               {sosActivated && (
                 <>
-                  <div className="w-36 h-36 rounded-full bg-gradient-to-br from-red-600 to-red-800 text-white mx-auto flex items-center justify-center shadow-2xl shadow-red-400 border-4 border-red-400">
+                  <div className="w-36 h-36 py-3 rounded-full bg-gradient-to-br from-red-600 to-red-800 text-white mx-auto flex items-center justify-center shadow-2xl shadow-red-400 border-4 border-red-400">
                     <div className="text-center">
                       <Radio className="w-8 h-8 mx-auto mb-1 animate-pulse" />
                       <span className="text-sm" style={{ fontWeight: 700 }}>ACTIVE</span>
                     </div>
                   </div>
-                  <div className="mt-5 space-y-2 text-sm">
+                  <div className="mt-4 space-y-2 text-sm">
                     <div className="flex items-center justify-center gap-2 text-red-700">
                       <CheckCircle className="w-4 h-4 text-green-600" />Alert sent to {contacts.length} contacts
                     </div>
@@ -351,7 +351,7 @@ export function SOS() {
         </div>
 
         {/* Emergency Hotlines */}
-        <Card className="bg-red-50 border-red-200">
+        <Card className="bg-red-50 border-red-200 mt-6">
           <CardHeader className="pb-3">
             <CardTitle className="text-red-700 flex items-center gap-2 text-base">
               <Phone className="w-4 h-4" />Direct Emergency Calls

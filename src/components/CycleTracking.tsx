@@ -329,7 +329,7 @@ export function CycleTracking() {
   if (!isOnboarded) {
     return (
       <div className="min-h-screen pb-12">
-        <div className="bg-gradient-to-br from-pink-500 to-rose-500 text-white">
+        <div className="bg-gradient-to-br from-pink-500 to-rose-500 text-white py-3">
             <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10">
               <div className="flex items-center gap-3">
                 <button onClick={() => navigate("/")} className="inline-flex items-center gap-2 text-pink-100 hover:text-white">
@@ -349,7 +349,7 @@ export function CycleTracking() {
   return (
     <div className="min-h-screen pb-12">
       {/* Header */}
-      <div className="bg-gradient-to-br from-pink-500 to-rose-500 text-white">
+      <div className="bg-gradient-to-br from-pink-500 to-rose-500 text-white py-3">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -366,10 +366,10 @@ export function CycleTracking() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 space-y-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 space-y-8 py-6">
         {/* Phase summary strip */}
-        <Card className="border-pink-200">
-          <CardContent className="py-4">
+        <Card className="border-pink-200 mb-12">
+          <CardContent className="py-3">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs text-gray-500">Selected</p>
@@ -384,7 +384,7 @@ export function CycleTracking() {
         </Card>
 
         {/* Calendar */}
-        <Card className="max-w-lg mx-auto w-full">
+        <Card className="max-w-lg mx-auto w-full mb-16">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <Button variant="ghost" size="sm" onClick={prevMonth}><ChevronLeft className="w-4 h-4" /></Button>
@@ -453,11 +453,11 @@ export function CycleTracking() {
 
         {/* Log button + form */}
         {!showForm ? (
-          <Button onClick={() => setShowForm(true)} className="w-full bg-pink-600 hover:bg-pink-700">
+          <Button onClick={() => setShowForm(true)} className="w-full bg-pink-600 hover:bg-pink-700 mb-10">
             <Plus className="w-4 h-4 mr-2" />Log Period
           </Button>
         ) : (
-          <Card className="border-pink-200">
+          <Card className="border-pink-200 mb-10">
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">
                 <CalendarIcon className="w-4 h-4 text-pink-600" />{editingEntryId ? "Edit Period" : "Log Period"}
@@ -541,7 +541,7 @@ export function CycleTracking() {
           </Card>
         )}
 
-        <p className="text-xs text-center text-gray-400">
+        <p className="text-xs text-center text-gray-400 mt-4">
           {storageMode === "server"
             ? "Cycle data is synced to your account so it is available across devices."
             : "Cycle data is currently stored only on this device."}

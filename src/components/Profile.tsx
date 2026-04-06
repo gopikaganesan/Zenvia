@@ -152,8 +152,8 @@ export function Profile() {
 
   return (
     <div className="min-h-screen pb-12">
-      <div className="bg-gradient-to-br from-violet-600 to-pink-500 text-white">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10">
+      <div className="bg-gradient-to-br from-violet-600 to-pink-500 text-white mb-4">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3">
           <div className="flex items-center gap-3">
             <button onClick={() => navigate("/")} className="inline-flex items-center gap-2 text-violet-100 hover:text-white">
               <ArrowLeft className="w-4 h-4" /><span className="text-sm">Back</span>
@@ -163,7 +163,7 @@ export function Profile() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 space-y-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3 space-y-8">
         {error && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">{error}</p>}
         {success && <p className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg p-3">{success}</p>}
 
@@ -177,22 +177,22 @@ export function Profile() {
                 seed={user.id}
                 className="w-16 h-16 border-2 border-violet-200 flex-shrink-0"
               />
-              <label className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-300 text-sm font-medium cursor-pointer hover:bg-violet-50 transition-colors h-11 bg-white">
-                <Camera className="w-4 h-4" />
+              <label className="inline-flex items-center gap-2 px-4 py-3 rounded-lg border border-gray-300 text-sm font-medium cursor-pointer hover:bg-violet-50 transition-colors h-11 bg-white">
+                <Camera className="w-4 h-4 " />
                 Upload Photo
                 <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
               </label>
             </div>
 
             <div>
-              <label className="text-xs font-medium text-gray-700 mb-1.5 block">Name</label>
+              <label className="text-xs font-medium text-gray-700 mb-2 block">Name</label>
               <div className="relative">
                 <User className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <Input value={form.name} onChange={(e) => updateForm("name", e.target.value)} className="pl-10 bg-white h-10" />
               </div>
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-700 mb-1.5 block">Email</label>
+              <label className="text-xs font-medium text-gray-700 mb-2 block">Email</label>
               <div className="relative">
                 <Mail className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <Input value={form.email} readOnly className="pl-10 bg-gray-50 h-10" />
@@ -200,7 +200,7 @@ export function Profile() {
             </div>
 
             <div>
-              <label className="text-xs font-medium text-gray-700 mb-1.5 block">Phone</label>
+              <label className="text-xs font-medium text-gray-700 mb-2 block">Phone</label>
               <div className="relative">
                 <Phone className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <Input value={form.phone} onChange={(e) => updateForm("phone", e.target.value)} className="pl-10 bg-white h-10" />
@@ -208,7 +208,7 @@ export function Profile() {
             </div>
 
             <div>
-              <label className="text-xs font-medium text-gray-700 mb-1.5 block">City / Locality</label>
+              <label className="text-xs font-medium text-gray-700 mb-2 block">City / Locality</label>
               <div className="relative">
                 <MapPin className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <Input value={form.city} onChange={(e) => updateForm("city", e.target.value)} className="pl-10 bg-white h-10" />
@@ -217,7 +217,7 @@ export function Profile() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="text-xs font-medium text-gray-700 mb-1.5 block">Emergency Contact Name</label>
+                <label className="text-xs font-medium text-gray-700 mb-2 block">Emergency Contact Name</label>
                 <div className="relative">
                   <Shield className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <Input
@@ -228,7 +228,7 @@ export function Profile() {
                 </div>
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-700 mb-1.5 block">Emergency Contact Phone</label>
+                <label className="text-xs font-medium text-gray-700 mb-2 block">Emergency Contact Phone</label>
                 <div className="relative">
                   <Phone className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <Input
@@ -241,7 +241,7 @@ export function Profile() {
             </div>
 
             <div>
-              <label className="text-xs font-medium text-gray-700 mb-1.5 block">About You</label>
+              <label className="text-xs font-medium text-gray-700 mb-2 block">About You</label>
               <Textarea
                 value={form.bio}
                 onChange={(e) => updateForm("bio", e.target.value)}
@@ -256,7 +256,7 @@ export function Profile() {
           </CardContent>
         </Card>
 
-        <Button variant="outline" className="w-full border-red-300 text-red-600 hover:bg-red-50" onClick={handleLogout}>
+        <Button variant="outline" className="w-full border-red-300 text-red-600 hover:bg-red-50 mt-6" onClick={handleLogout}>
           <LogOut className="w-4 h-4 mr-2" />Logout
         </Button>
 
