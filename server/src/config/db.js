@@ -8,8 +8,18 @@ async function connectDatabase() {
     return;
   }
 
-  await mongoose.connect(MONGODB_URI);
-  console.log("MongoDB connected");
+  try {
+    await mongoose.connect(MONGODB_URI, {
+      retryWrites: true,
+      w: "majority",
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
+    });
+    console.log("MongoDB Atlas connected successfully");
+  } catch (error) {
+    console.error("MongoDB connection error:", error.message);
+    throw error;
+  }
 }
 
 module.exports = { connectDatabase };

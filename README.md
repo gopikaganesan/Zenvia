@@ -62,8 +62,32 @@ Edit `server/.env`:
 PORT=5000
 MONGODB_URI=mongodb+srv://<user>:<pass>@<cluster>/<db>?retryWrites=true&w=majority
 CLIENT_ORIGIN=http://localhost:3000
-JWT_SECRET=your-secret-key
+JWT_SECRET=<paste-a-random-64-byte-base64-secret>
 ```
+
+### MongoDB Atlas setup (recommended)
+
+1. Create a cluster in MongoDB Atlas.
+2. Create a database user (Database Access).
+3. Allow your machine IP (or `0.0.0.0/0` for development) in Network Access.
+4. Copy the Node.js connection string from Atlas and place it in `MONGODB_URI`.
+5. Use a strong `JWT_SECRET` and keep it private.
+
+PowerShell command to generate a strong JWT secret:
+
+```powershell
+$bytes = New-Object byte[] 64; [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes); [Convert]::ToBase64String($bytes)
+```
+
+If your environment has DNS SRV issues with `mongodb+srv://`, use a non-SRV URI format:
+
+```text
+mongodb://<user>:<pass>@<host1>:27017,<host2>:27017,<host3>:27017/?ssl=true&authSource=admin&replicaSet=<replica-set>&retryWrites=true&w=majority
+```
+
+You can get hosts and replica set values from:
+- `nslookup -type=SRV _mongodb._tcp.<cluster-host>`
+- `nslookup -type=TXT <cluster-host>`
 
 > **Tip:** The app runs without MongoDB — community and SOS features will return 503, but cycle tracking and nearby services work fully offline.
 
