@@ -1,183 +1,175 @@
-# Zenvia — Women's Safety & Wellness Platform
+# Zenvia
 
-A privacy-first MERN full-stack application that empowers women with cycle tracking, community support, SOS emergency alerts, and nearby services discovery.
+Zenvia is a privacy-first MERN full-stack app for women’s safety and wellness. It combines cycle tracking, community support, SOS alerts, and nearby service discovery in a single responsive interface.
 
-## Architecture
+## What’s Included
+
+- Cycle tracking with logged, predicted, fertile, and ovulation phases.
+- Community posts with exact multi-line formatting, formatting tools, and edit/delete support.
+- SOS emergency alerts with location sharing, nearby-user alerts, and map actions to open a location or get directions.
+- Nearby services discovery for hospitals, pharmacies, and safe spaces.
+- Authenticated profile management and public profile previews.
+
+## Tech Stack
 
 | Layer | Tech | Purpose |
-|-------|------|---------|
-| **Frontend** | React 18 + Vite + TypeScript | SPA with Tailwind CSS, Radix UI, Lucide icons |
-| **Backend** | Node.js + Express 5 | REST API for auth, community posts, SOS alerts |
-| **Database** | MongoDB (Atlas or local) | Stores users, cycle entries, posts, SOS alerts |
-| **External** | OpenStreetMap Overpass API | Real-time nearby services (hospitals, pharmacies, shelters) |
+|---|---|---|
+| Frontend | React 18 + Vite + TypeScript | SPA, routing, client-side UI |
+| UI | Tailwind CSS, Radix UI, Lucide icons | Layout, controls, and iconography |
+| Backend | Node.js + Express 5 | REST API for auth and app data |
+| Database | MongoDB / MongoDB Atlas | Users, cycle entries, community posts, SOS alerts |
+| External APIs | OpenStreetMap Overpass API | Live nearby service discovery |
 
-### Privacy-first design
+## Core Features
 
-- **Cycle / period data** is stored in MongoDB when logged in; fallback is device local storage if offline or unauthenticated.
-- The backend stores: user accounts, cycle entries, community posts, and SOS location alerts.
-- Nearby services are fetched directly from the open-source Overpass API (OpenStreetMap) — no backend intermediary.
+### Cycle Tracking
 
-## Features
+- Log period start and end dates plus flow level.
+- View a calendar with clear legend labels for logged, predicted, fertile, and ovulation days.
+- Data syncs to MongoDB when logged in, with local fallback support for offline or unauthenticated use.
 
-| Feature | Data storage | Description |
-|---------|-------------|-------------|
-| **Cycle Tracking** | MongoDB + local fallback | Log periods, track phases, view a reactive calendar |
-| **Community** | MongoDB | Create/read/like/delete posts (auth required) |
-| **SOS Emergency** | MongoDB + Geolocation | Countdown → trigger alert → share GPS with server & contacts |
-| **Nearby Services** | OpenStreetMap (live) | Discover hospitals, pharmacies, safe spaces via Overpass API |
-| **Auth** | MongoDB + JWT | Register / login / logout with HTTP-only cookie + Bearer token |
+### Community
 
-### Recent UX updates
+- Create posts with markdown-like formatting controls for bold, italic, heading, quote, list, and code.
+- Posts render line breaks and formatting as typed.
+- Edit your own posts from the feed.
+- Like, comment, and delete supported posts and comments.
 
-- Profile image upload now supports interactive cropping with automatic image compression before save.
-- Community posts preserve multi-line text formatting (line breaks are shown as typed).
-- Main pages now use consistent centered layout spacing and aligned header navigation.
-- Cycle tracker calendar is compact for better readability on mobile and desktop.
+### Nearby Services
 
-## Quick start
+- Discover hospitals, clinics, pharmacies, and safe spaces using live Overpass API data.
+- The search box filters the currently loaded service list by name on the client side.
+- Open directions to any result in an external map app.
+- Safe spaces include police stations, NGOs, shelters, community centers, and similar locations.
 
-### 1. Install dependencies
+### SOS Emergency
+
+- Trigger an emergency alert with a countdown.
+- Share GPS coordinates with the server when allowed.
+- View nearby active alerts from other users.
+- Open the alert location or route directly in a map service.
+
+### Profile and Auth
+
+- Register, log in, log out, and load the current user.
+- Update profile details, avatar, city, bio, and emergency contacts.
+- View minimal public profiles from community avatars/usernames.
+
+## Local Setup
+
+### Install
 
 ```bash
-# Frontend (project root)
 npm install
-
-# Backend
 cd server
 npm install
 ```
 
-### 2. Configure environment
+### Environment
 
-```bash
-# Backend
-cd server
-copy .env.example .env   # Windows
-# cp .env.example .env   # Mac/Linux
-```
+Create `server/.env` with:
 
-Edit `server/.env`:
-
-```
+```text
 PORT=5000
 MONGODB_URI=mongodb+srv://<user>:<pass>@<cluster>/<db>?retryWrites=true&w=majority
 CLIENT_ORIGIN=http://localhost:3000
-JWT_SECRET=<paste-a-random-64-byte-base64-secret>
+JWT_SECRET=<a-strong-random-secret>
 ```
 
-### MongoDB Atlas setup (recommended)
-
-1. Create a cluster in MongoDB Atlas.
-2. Create a database user (Database Access).
-3. Allow your machine IP (or `0.0.0.0/0` for development) in Network Access.
-4. Copy the Node.js connection string from Atlas and place it in `MONGODB_URI`.
-5. Use a strong `JWT_SECRET` and keep it private.
-
-PowerShell command to generate a strong JWT secret:
+PowerShell secret generator:
 
 ```powershell
 $bytes = New-Object byte[] 64; [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes); [Convert]::ToBase64String($bytes)
 ```
 
-If your environment has DNS SRV issues with `mongodb+srv://`, use a non-SRV URI format:
-
-```text
-mongodb://<user>:<pass>@<host1>:27017,<host2>:27017,<host3>:27017/?ssl=true&authSource=admin&replicaSet=<replica-set>&retryWrites=true&w=majority
-```
-
-You can get hosts and replica set values from:
-- `nslookup -type=SRV _mongodb._tcp.<cluster-host>`
-- `nslookup -type=TXT <cluster-host>`
-
-> **Tip:** The app runs without MongoDB — community and SOS features will return 503, but cycle tracking and nearby services work fully offline.
-
-> **Tip:** With MongoDB enabled and a logged-in user, cycle entries sync across devices via backend APIs.
-
-### 3. Run
+### Run
 
 ```bash
-# Both client + server
 npm run dev:full
-
-# Or separately
-npm run dev:client   # http://localhost:3000
-npm run dev:server   # http://localhost:5000
 ```
+
+Frontend runs at `http://localhost:3000` and the backend at `http://localhost:5000`.
 
 ## API Reference
 
 ### Health
 
 | Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | `/api/v1/health` | No | Server status + DB connection state |
+|---|---|---|---|
+| GET | `/api/v1/health` | No | Server and database status |
 
 ### Auth
 
 | Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| POST | `/api/v1/auth/register` | No | Create account `{ name, email, password }` |
-| POST | `/api/v1/auth/login` | No | Login `{ email, password }` → JWT |
-| GET | `/api/v1/auth/me` | Yes | Current user info |
-| POST | `/api/v1/auth/logout` | Yes | Clear session |
+|---|---|---|---|
+| POST | `/api/v1/auth/register` | No | Create an account |
+| POST | `/api/v1/auth/login` | No | Sign in and receive JWT/session |
+| GET | `/api/v1/auth/me` | Yes | Get current user |
+| PUT | `/api/v1/auth/me` | Yes | Update profile |
+| POST | `/api/v1/auth/logout` | Yes | Log out |
 
 ### Community Posts
 
 | Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | `/api/v1/posts` | No | List all posts (newest first) |
-| POST | `/api/v1/posts` | Yes | Create post `{ content, category? }` |
+|---|---|---|---|
+| GET | `/api/v1/posts` | No | List posts |
+| POST | `/api/v1/posts` | Yes | Create a post |
+| PUT | `/api/v1/posts/:id` | Yes | Edit your post |
 | POST | `/api/v1/posts/:id/like` | Yes | Toggle like |
-| DELETE | `/api/v1/posts/:id` | Yes | Delete own post |
+| DELETE | `/api/v1/posts/:id` | Yes | Delete your post |
+| POST | `/api/v1/posts/:id/comments` | Yes | Add a comment |
+| DELETE | `/api/v1/posts/:id/comments/:commentId` | Yes | Delete a comment |
 
 Categories: `Health`, `Wellness`, `Support`, `Advice`, `Career`, `General`
 
 ### SOS Alerts
 
 | Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| POST | `/api/v1/sos/trigger` | Yes | Create alert `{ longitude, latitude, message? }` |
-| GET | `/api/v1/sos/nearby` | No | Find active alerts `?longitude=&latitude=&radiusKm=5` |
-| POST | `/api/v1/sos/:id/resolve` | Yes | Mark own alert resolved |
+|---|---|---|---|
+| POST | `/api/v1/sos/trigger` | Yes | Create an alert with coordinates |
+| GET | `/api/v1/sos/nearby` | No | Find active alerts near a point |
+| POST | `/api/v1/sos/:id/resolve` | Yes | Resolve your alert |
 
 ### Cycle Entries
 
 | Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | `/api/v1/cycle-entries` | Yes | List current user's cycle logs |
-| POST | `/api/v1/cycle-entries` | Yes | Create cycle log `{ periodStartDate, periodEndDate, flowLevel }` |
-| DELETE | `/api/v1/cycle-entries/:id` | Yes | Delete own cycle log |
+|---|---|---|---|
+| GET | `/api/v1/cycle-entries` | Yes | List cycle logs |
+| POST | `/api/v1/cycle-entries` | Yes | Create a cycle log |
+| PUT | `/api/v1/cycle-entries/:id` | Yes | Update a cycle log |
+| DELETE | `/api/v1/cycle-entries/:id` | Yes | Delete a cycle log |
 
-SOS uses a **2dsphere** geospatial index for efficient nearby queries.
+## Project Structure
 
-## Project structure
-
-```
-figma-code/
+```text
+Zenvia/
 ├── src/
-│   ├── components/       # React pages & UI components
-│   ├── lib/
-│   │   ├── api.ts        # Backend API client
-│   │   └── auth.ts       # Token/session helpers
-│   ├── styles/
-│   │   └── globals.css   # Tailwind + custom styles
-│   ├── routes.ts         # React Router config
-│   └── main.tsx          # App entry
+│   ├── components/        # React pages and shared UI
+│   ├── lib/               # API, auth, and utilities
+│   ├── styles/            # Global styles
+│   ├── routes.ts          # App router
+│   └── main.tsx           # Client entry point
 ├── server/
 │   └── src/
-│       ├── app.js        # Express app setup
-│       ├── server.js     # Entry point
-│       ├── config/db.js  # Mongoose connection
-│       ├── models/       # User, CycleEntry, CommunityPost, SOSAlert
-│       └── routes/       # health, auth, cycleEntries, communityPosts, sosAlerts
-├── package.json          # Frontend deps + dev scripts
-└── vite.config.ts        # Dev server config + API proxy
+│       ├── app.js         # Express app setup
+│       ├── server.js      # Backend entry point
+│       ├── config/db.js   # MongoDB connection
+│       ├── models/        # Mongoose models
+│       └── routes/        # REST route handlers
+├── package.json           # Frontend scripts and dependencies
+└── vite.config.ts         # Vite dev server and API proxy
 ```
 
 ## External APIs
 
-- **OpenStreetMap Overpass API** — used by Nearby Services to fetch real-time hospital, pharmacy, and shelter data based on the user's GPS coordinates. No API key required.
-- **Nominatim** (optional) — reverse geocoding for human-readable location labels.
+- OpenStreetMap Overpass API for live nearby service discovery.
+- Optional reverse geocoding can be added later if needed for friendlier location labels.
+
+## Notes
+
+- Community posts preserve formatting as typed, including line breaks and lightweight markdown-like markers.
+- Nearby Services search is client-side and filters the already fetched results by place name.
+- SOS nearby alerts can be opened directly in a map for location or directions.
 
 ## License
 
