@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import {
   ArrowLeft,
@@ -9,6 +9,7 @@ import {
   Trash2,
   MapPin,
   Calendar,
+  Pencil,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
@@ -24,6 +25,7 @@ import {
 import {
   listPosts,
   createPost,
+  updatePost,
   likePost,
   deletePost,
   addComment,
@@ -36,6 +38,116 @@ import { isAuthenticated, getStoredUser } from "@/lib/auth";
 import { UserAvatar } from "./UserAvatar";
 
 const categoryOptions = ["Health", "Wellness", "Support", "Advice", "Career", "General"];
+
+type FormatPreset = {
+  label: string;
+  before: string;
+  after?: string;
+  placeholder?: string;
+};
+
+const formatPresets: FormatPreset[] = [
+  { label: "B", before: "**", after: "**", placeholder: "bold text" },
+  { label: "I", before: "*", after: "*", placeholder: "italic text" },
+  { label: "H", before: "## ", placeholder: "heading" },
+  { label: "Quote", before: "> ", placeholder: "quoted text" },
+  { label: "List", before: "- ", placeholder: "list item" },
+  { label: "Code", before: "`", after: "`", placeholder: "code" },
+];
+
+function renderInlineFormatting(text: string) {
+  const tokenRegex = /(\*\*[^*]+\*\*|`[^`]+`|\*[^*]+\*)/g;
+  const tokens = text.split(tokenRegex).filter(Boolean);
+
+  return tokens.map((token, index) => {
+    if (token.startsWith("**") && token.endsWith("**") && token.length > 4) {
+      return <strong key={`b-${index}`}>{token.slice(2, -2)}</strong>;
+    }
+    if (token.startsWith("`") && token.endsWith("`") && token.length > 2) {
+      return <code key={`c-${index}`} className="px-1 py-0.5 rounded bg-gray-100 text-[0.92em]">{token.slice(1, -1)}</code>;
+    }
+    if (token.startsWith("*") && token.endsWith("*") && token.length > 2) {
+      return <em key={`i-${index}`}>{token.slice(1, -1)}</em>;
+    }
+    return <React.Fragment key={`t-${index}`}>{token}</React.Fragment>;
+  });
+}
+
+function renderFormattedContent(raw: string) {
+  const lines = raw.replace(/\r\n/g, "\n").split("\n");
+  const nodes: React.ReactNode[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    if (!trimmed) {
+      nodes.push(<div key={`space-${i}`} className="h-2" />);
+      i += 1;
+      continue;
+    }
+
+    if (/^\s*##\s+/.test(line)) {
+      nodes.push(
+        <h3 key={`h-${i}`} className="text-base text-gray-900" style={{ fontWeight: 700 }}>
+          {renderInlineFormatting(line.replace(/^\s*##\s+/, ""))}
+        </h3>,
+      );
+      i += 1;
+      continue;
+    }
+
+    if (/^\s*>\s?/.test(line)) {
+      const quoteLines: string[] = [];
+      let quoteIndex = i;
+      while (quoteIndex < lines.length && /^\s*>\s?/.test(lines[quoteIndex])) {
+        quoteLines.push(lines[quoteIndex].replace(/^\s*>\s?/, ""));
+        quoteIndex += 1;
+      }
+
+      nodes.push(
+        <blockquote key={`q-${i}`} className="border-l-4 border-violet-300 bg-violet-50/80 px-3 py-2 rounded-md text-gray-700 italic space-y-1">
+          {quoteLines.map((quoteLine, quoteLineIndex) => (
+            <div key={`q-line-${i}-${quoteLineIndex}`}>{renderInlineFormatting(quoteLine)}</div>
+          ))}
+        </blockquote>,
+      );
+      i = quoteIndex;
+      continue;
+    }
+
+    if (/^\s*[-*]\s?/.test(line)) {
+      const items: string[] = [];
+      let listIndex = i;
+      while (listIndex < lines.length && /^\s*[-*]\s?/.test(lines[listIndex])) {
+        items.push(lines[listIndex].replace(/^\s*[-*]\s?/, ""));
+        listIndex += 1;
+      }
+      nodes.push(
+        <div key={`ul-${i}`} className="text-gray-700 space-y-1">
+          {items.map((item, itemIndex) => (
+            <div key={`li-${i}-${itemIndex}`} className="flex items-start gap-2">
+              <span className="leading-6 text-black" aria-hidden="true">•</span>
+              <span className="leading-relaxed break-words">{renderInlineFormatting(item)}</span>
+            </div>
+          ))}
+        </div>,
+      );
+      i = listIndex;
+      continue;
+    }
+
+    nodes.push(
+      <p key={`p-${i}`} className="text-sm text-gray-700 leading-relaxed break-words">
+        {renderInlineFormatting(line)}
+      </p>,
+    );
+    i += 1;
+  }
+
+  return <div className="space-y-1">{nodes}</div>;
+}
 
 function timeAgo(iso: string) {
   const diff = Date.now() - new Date(iso).getTime();
@@ -62,6 +174,12 @@ export function Community() {
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState("");
   const [selectedProfile, setSelectedProfile] = useState<PublicUserProfile | null>(null);
+  const composeRef = useRef<HTMLTextAreaElement | null>(null);
+  const editRef = useRef<HTMLTextAreaElement | null>(null);
+  const [editingPostId, setEditingPostId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState("");
+  const [editCategory, setEditCategory] = useState("General");
+  const [updatingPost, setUpdatingPost] = useState(false);
 
   const user = getStoredUser();
   const userId = user?.id;
@@ -95,6 +213,48 @@ export function Community() {
     }
   };
 
+  const applyFormat = (
+    preset: FormatPreset,
+    value: string,
+    setValue: React.Dispatch<React.SetStateAction<string>>,
+    textarea: HTMLTextAreaElement | null,
+  ) => {
+    if (!textarea) return;
+
+    const selectionStart = textarea.selectionStart ?? 0;
+    const selectionEnd = textarea.selectionEnd ?? 0;
+    const selectedText = value.slice(selectionStart, selectionEnd);
+    const isLinePrefixPreset = !preset.after && ["## ", "> ", "- "].includes(preset.before);
+
+    let inserted = "";
+    if (isLinePrefixPreset && selectedText) {
+      inserted = selectedText
+        .split(/\r?\n/)
+        .map((line) => (line.trim() ? `${preset.before}${line}` : line))
+        .join("\n");
+    } else {
+      inserted = `${preset.before}${selectedText || preset.placeholder || ""}${preset.after || ""}`;
+    }
+
+    const updated = `${value.slice(0, selectionStart)}${inserted}${value.slice(selectionEnd)}`;
+
+    setValue(updated);
+
+    requestAnimationFrame(() => {
+      const cursor = selectedText ? selectionStart + inserted.length : selectionStart + (preset.before.length + (preset.placeholder || "").length);
+      textarea.focus();
+      textarea.setSelectionRange(cursor, cursor);
+    });
+  };
+
+  const applyComposeFormat = (preset: FormatPreset) => {
+    applyFormat(preset, newContent, setNewContent, composeRef.current);
+  };
+
+  const applyEditFormat = (preset: FormatPreset) => {
+    applyFormat(preset, editContent, setEditContent, editRef.current);
+  };
+
   const handleLike = async (id: string) => {
     try {
       const res = await likePost(id);
@@ -107,6 +267,31 @@ export function Community() {
       await deletePost(id);
       setPosts((prev) => prev.filter((p) => p._id !== id));
     } catch {}
+  };
+
+  const openEditPost = (post: PostType) => {
+    setEditingPostId(post._id);
+    setEditContent(post.content.replace(/\\n/g, "\n"));
+    setEditCategory(post.category || "General");
+  };
+
+  const handleUpdatePost = async () => {
+    if (!editingPostId) return;
+    const normalized = editContent.replace(/\r\n/g, "\n");
+    if (!normalized.trim()) return;
+
+    setUpdatingPost(true);
+    try {
+      const response = await updatePost(editingPostId, { content: normalized, category: editCategory });
+      setPosts((prev) => prev.map((post) => (post._id === editingPostId ? response.data : post)));
+      setEditingPostId(null);
+      setEditContent("");
+      setEditCategory("General");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update post");
+    } finally {
+      setUpdatingPost(false);
+    }
   };
 
   const handleAddComment = async (postId: string) => {
@@ -169,11 +354,27 @@ export function Community() {
           <Card className="border-violet-200 mb-10">
             <CardContent className="space-y-3 py-6">
               <Textarea
+                ref={composeRef}
                 placeholder="Share something with the community…"
                 value={newContent}
                 onChange={(e) => setNewContent(e.target.value)}
                 className="min-h-[56px] resize-none text-sm"
               />
+              <div className="flex items-center gap-2 flex-wrap">
+                {formatPresets.map((preset) => (
+                  <Button
+                    key={preset.label}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => applyComposeFormat(preset)}
+                  >
+                    {preset.label}
+                  </Button>
+                ))}
+                <span className="text-[11px] text-gray-500">Formatting supports mini tweets and long-form notes.</span>
+              </div>
               <div className="flex items-center justify-between">
                 <select
                   value={newCategory}
@@ -251,7 +452,7 @@ export function Community() {
                     <Badge variant="outline" className="text-xs">{post.category}</Badge>
                   </div>
                 </div>
-                <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap break-words">{post.content.replace(/\\n/g, "\n")}</p>
+                {renderFormattedContent(post.content.replace(/\\n/g, "\n"))}
                 <div className="flex items-center gap-2 py-2 border-t">
                   <Button variant="ghost" size="sm" onClick={() => handleLike(post._id)}
                     className={post.likedBy.includes(userId || "") ? "text-pink-600 h-8" : "h-8"}
@@ -267,6 +468,16 @@ export function Community() {
                   >
                     <MessageCircle className="w-4 h-4 mr-1" />{post.comments?.length || 0}
                   </Button>
+                  {post.author === userId && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => openEditPost(post)}
+                      className="text-gray-400 hover:text-violet-700 h-8"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                  )}
                   {post.author === userId && (
                     <Button variant="ghost" size="sm" onClick={() => handleDelete(post._id)} className="text-gray-400 hover:text-red-600 ml-auto h-8">
                       <Trash2 className="w-4 h-4" />
@@ -387,6 +598,64 @@ export function Community() {
                 )}
               </div>
             )}
+          </DialogContent>
+        </Dialog>
+
+        <Dialog
+          open={Boolean(editingPostId)}
+          onOpenChange={(open) => {
+            if (!open) {
+              setEditingPostId(null);
+              setEditContent("");
+              setEditCategory("General");
+            }
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Post</DialogTitle>
+              <DialogDescription>Update your post content and category.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3">
+              <Textarea
+                ref={editRef}
+                placeholder="Update your post..."
+                value={editContent}
+                onChange={(e) => setEditContent(e.target.value)}
+                className="min-h-[120px] resize-none text-sm"
+              />
+              <div className="flex items-center gap-2 flex-wrap">
+                {formatPresets.map((preset) => (
+                  <Button
+                    key={`edit-${preset.label}`}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => applyEditFormat(preset)}
+                  >
+                    {preset.label}
+                  </Button>
+                ))}
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <select
+                  value={editCategory}
+                  onChange={(e) => setEditCategory(e.target.value)}
+                  className="text-sm border rounded-lg px-2.5 py-1.5 bg-white h-9"
+                >
+                  {categoryOptions.map((c) => <option key={`edit-option-${c}`}>{c}</option>)}
+                </select>
+                <Button
+                  type="button"
+                  className="bg-violet-600 hover:bg-violet-700"
+                  disabled={updatingPost || !editContent.trim()}
+                  onClick={handleUpdatePost}
+                >
+                  {updatingPost ? "Saving..." : "Save Changes"}
+                </Button>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
       </div>

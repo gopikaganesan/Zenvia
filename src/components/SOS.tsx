@@ -16,11 +16,13 @@ import {
   Volume2,
   MessageSquare,
   Siren,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger,
 } from "./ui/dialog";
@@ -32,7 +34,7 @@ import {
   getNearbyAlerts,
   type SOSAlert,
 } from "@/lib/api";
-import { isAuthenticated } from "@/lib/auth";
+import { getStoredUser, isAuthenticated } from "@/lib/auth";
 import { getLocalityEmergencyDetails, type LocalityEmergencyDetails } from "@/lib/emergency";
 
 // ─── Defaults ───────────────────────────────────────
@@ -77,6 +79,14 @@ export function SOS() {
   const [backendStatus, setBackendStatus] = useState("");
   const [deliveryVerified, setDeliveryVerified] = useState(false);
   const [emergencyDetails, setEmergencyDetails] = useState<LocalityEmergencyDetails | null>(null);
+  const [activeTab, setActiveTab] = useState("trigger");
+  const [nearbyAlerts, setNearbyAlerts] = useState<SOSAlert[]>([]);
+  const [nearbyLoading, setNearbyLoading] = useState(false);
+  const [nearbyError, setNearbyError] = useState("");
+  const [nearbyFetchStatus, setNearbyFetchStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [nearbyLastRefreshedAt, setNearbyLastRefreshedAt] = useState<string>("");
+
+  const currentUser = getStoredUser();
 
   // Persist contacts
   useEffect(() => { localStorage.setItem(CONTACTS_KEY, JSON.stringify(contacts)); }, [contacts]);
@@ -88,7 +98,7 @@ export function SOS() {
     setDeliveryVerified(false);
 
     // Try sending location to backend
-    if (isAuthenticated() && shareLocation && navigator.geolocation) {
+    if (isAuthenticated() && shareLocation && alertNearby && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         async (pos) => {
           try {
@@ -119,7 +129,76 @@ export function SOS() {
     } else {
       setBackendStatus("Local alert only");
     }
-  }, [shareLocation, selectedMessage]);
+  }, [shareLocation, alertNearby, selectedMessage]);
+
+  const loadNearbyAlerts = useCallback(() => {
+    if (!isAuthenticated()) {
+      setNearbyAlerts([]);
+      setNearbyError("Log in to receive nearby SOS notifications.");
+      setNearbyFetchStatus("error");
+      return;
+    }
+
+    if (!navigator.geolocation) {
+      setNearbyError("Geolocation not supported by your browser.");
+      setNearbyFetchStatus("error");
+      return;
+    }
+
+    setNearbyLoading(true);
+    setNearbyError("");
+    setNearbyFetchStatus("loading");
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const response = await getNearbyAlerts(pos.coords.longitude, pos.coords.latitude, 10);
+          const filtered = response.data
+            .filter((alert) => alert.active && alert.user !== currentUser?.id)
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          setNearbyAlerts(filtered);
+          setNearbyFetchStatus("success");
+          setNearbyLastRefreshedAt(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }));
+        } catch {
+          setNearbyError("Unable to load nearby SOS alerts right now.");
+          setNearbyFetchStatus("error");
+        } finally {
+          setNearbyLoading(false);
+        }
+      },
+      () => {
+        setNearbyLoading(false);
+        setNearbyError("Location access is needed to find nearby SOS notifications.");
+        setNearbyFetchStatus("error");
+      },
+    );
+  }, [currentUser?.id]);
+
+  useEffect(() => {
+    if (activeTab !== "nearby") return;
+    loadNearbyAlerts();
+    const interval = window.setInterval(loadNearbyAlerts, 30000);
+    return () => window.clearInterval(interval);
+  }, [activeTab, loadNearbyAlerts]);
+
+  const getAlertCoordinates = (alert: SOSAlert) => {
+    const [longitude, latitude] = alert.location?.coordinates || [];
+    if (longitude == null || latitude == null) return null;
+    return { latitude, longitude };
+  };
+
+  const openAlertLocation = (alert: SOSAlert) => {
+    const coords = getAlertCoordinates(alert);
+    if (!coords) return;
+    const query = `${coords.latitude},${coords.longitude}`;
+    window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`, "_blank", "noopener,noreferrer");
+  };
+
+  const openAlertDirections = (alert: SOSAlert) => {
+    const coords = getAlertCoordinates(alert);
+    if (!coords) return;
+    const destination = `${coords.latitude},${coords.longitude}`;
+    window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}&travelmode=driving`, "_blank", "noopener,noreferrer");
+  };
 
   const startCountdown = useCallback(() => {
     setCounting(true);
@@ -178,77 +257,153 @@ export function SOS() {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 space-y-8">
-        {/* SOS Button */}
-        <Card className={`shadow-lg transition-all mb-10 ${sosActivated ? "border-red-500 bg-red-50" : counting ? "border-orange-400 bg-orange-50" : "border-red-200 bg-red-50/50"}`}>
-          <CardContent className="py-8">
-            <div className="text-center">
-              {/* Idle */}
-              {!counting && !sosActivated && (
-                <>
-                  <p className="text-gray-600 mb-6 text-sm">Press the SOS button to alert your emergency contacts and nearby services.</p>
-                  <button onClick={startCountdown} className="w-42 h-42 py-6 px-10 rounded-full bg-gradient-to-br from-red-500 to-red-700 text-white mx-auto flex items-center justify-center shadow-2xl shadow-red-300 hover:scale-105 active:scale-95 transition-all border-4 border-red-300">
-                    <div className="text-center">
-                      <Siren className="w-10 h-10 mx-auto mb-1" />
-                      <span className="text-xl" style={{ fontWeight: 700 }}>SOS</span>
-                    </div>
-                  </button>
-                  {!isAuthenticated() && (
-                    <p className="text-xs text-amber-600 mt-4">Log in to also alert nearby Zenvia users via the server.</p>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="trigger"><Siren className="w-4 h-4 mr-1" />Trigger SOS</TabsTrigger>
+            <TabsTrigger value="nearby"><Bell className="w-4 h-4 mr-1" />Nearby Alerts</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="trigger">
+            {/* SOS Button */}
+            <Card className={`shadow-lg transition-all mb-10 ${sosActivated ? "border-red-500 bg-red-50" : counting ? "border-orange-400 bg-orange-50" : "border-red-200 bg-red-50/50"}`}>
+              <CardContent className="py-8">
+                <div className="text-center">
+                  {/* Idle */}
+                  {!counting && !sosActivated && (
+                    <>
+                      <p className="text-gray-600 mb-6 text-sm">Press the SOS button to alert your emergency contacts and nearby services.</p>
+                      <button onClick={startCountdown} className="w-42 h-42 py-6 px-10 rounded-full bg-gradient-to-br from-red-500 to-red-700 text-white mx-auto flex items-center justify-center shadow-2xl shadow-red-300 hover:scale-105 active:scale-95 transition-all border-4 border-red-300">
+                        <div className="text-center">
+                          <Siren className="w-10 h-10 mx-auto mb-1" />
+                          <span className="text-xl" style={{ fontWeight: 700 }}>SOS</span>
+                        </div>
+                      </button>
+                      {!isAuthenticated() && (
+                        <p className="text-xs text-amber-600 mt-4">Log in to also alert nearby Zenvia users via the server.</p>
+                      )}
+                    </>
                   )}
-                </>
-              )}
 
-              {/* Counting */}
-              {counting && (
-                <>
-                  <p className="text-orange-700 mb-4" style={{ fontWeight: 600 }}>Alert sending in…</p>
-                  <div className="w-36 h-36 mb-4 rounded-full bg-gradient-to-br from-orange-500 to-red-600 text-white mx-auto flex items-center justify-center shadow-2xl shadow-orange-300 animate-pulse border-4 border-orange-300">
-                    <span className="text-5xl" style={{ fontWeight: 700 }}>{countdown}</span>
-                  </div>
-                  <Progress value={((5 - countdown) / 5) * 100} className="h-2 max-w-xs mx-auto mt-6 mb-6" />
-                  <Button variant="outline" className="mt-5 border-orange-400 text-orange-700" onClick={cancelSOS}>
-                    <X className="w-4 h-4 mr-1" />Cancel
-                  </Button>
-                </>
-              )}
+                  {/* Counting */}
+                  {counting && (
+                    <>
+                      <p className="text-orange-700 mb-4" style={{ fontWeight: 600 }}>Alert sending in…</p>
+                      <div className="w-36 h-36 mb-4 rounded-full bg-gradient-to-br from-orange-500 to-red-600 text-white mx-auto flex items-center justify-center shadow-2xl shadow-orange-300 animate-pulse border-4 border-orange-300">
+                        <span className="text-5xl" style={{ fontWeight: 700 }}>{countdown}</span>
+                      </div>
+                      <Progress value={((5 - countdown) / 5) * 100} className="h-2 max-w-xs mx-auto mt-6 mb-6" />
+                      <Button variant="outline" className="mt-5 border-orange-400 text-orange-700" onClick={cancelSOS}>
+                        <X className="w-4 h-4 mr-1" />Cancel
+                      </Button>
+                    </>
+                  )}
 
-              {/* Active */}
-              {sosActivated && (
-                <>
-                  <div className="w-36 h-36 py-3 rounded-full bg-gradient-to-br from-red-600 to-red-800 text-white mx-auto flex items-center justify-center shadow-2xl shadow-red-400 border-4 border-red-400">
-                    <div className="text-center">
-                      <Radio className="w-8 h-8 mx-auto mb-1 animate-pulse" />
-                      <span className="text-sm" style={{ fontWeight: 700 }}>ACTIVE</span>
-                    </div>
-                  </div>
-                  <div className="mt-4 space-y-2 text-sm">
-                    <div className="flex items-center justify-center gap-2 text-red-700">
-                      <CheckCircle className="w-4 h-4 text-green-600" />Alert sent to {contacts.length} contacts
-                    </div>
-                    {shareLocation && (
-                      <div className="flex items-center justify-center gap-2 text-red-700">
-                        <CheckCircle className="w-4 h-4 text-green-600" />Location shared
+                  {/* Active */}
+                  {sosActivated && (
+                    <>
+                      <div className="w-36 h-36 py-3 rounded-full bg-gradient-to-br from-red-600 to-red-800 text-white mx-auto flex items-center justify-center shadow-2xl shadow-red-400 border-4 border-red-400">
+                        <div className="text-center">
+                          <Radio className="w-8 h-8 mx-auto mb-1 animate-pulse" />
+                          <span className="text-sm" style={{ fontWeight: 700 }}>ACTIVE</span>
+                        </div>
                       </div>
-                    )}
-                    {backendStatus && (
-                      <div className="flex items-center justify-center gap-2 text-gray-500">
-                        <Shield className="w-4 h-4" />{backendStatus}
+                      <div className="mt-4 space-y-2 text-sm">
+                        <div className="flex items-center justify-center gap-2 text-red-700">
+                          <CheckCircle className="w-4 h-4 text-green-600" />Alert sent to {contacts.length} contacts
+                        </div>
+                        {shareLocation && (
+                          <div className="flex items-center justify-center gap-2 text-red-700">
+                            <CheckCircle className="w-4 h-4 text-green-600" />Location shared
+                          </div>
+                        )}
+                        {backendStatus && (
+                          <div className="flex items-center justify-center gap-2 text-gray-500">
+                            <Shield className="w-4 h-4" />{backendStatus}
+                          </div>
+                        )}
+                        {deliveryVerified && (
+                          <div className="flex items-center justify-center gap-2 text-green-700">
+                            <CheckCircle className="w-4 h-4" />Server delivery check passed
+                          </div>
+                        )}
                       </div>
-                    )}
-                    {deliveryVerified && (
-                      <div className="flex items-center justify-center gap-2 text-green-700">
-                        <CheckCircle className="w-4 h-4" />Server delivery check passed
-                      </div>
-                    )}
-                  </div>
-                  <Button className="mt-6 bg-gray-800 hover:bg-gray-900" onClick={cancelSOS}>
-                    <X className="w-4 h-4 mr-1" />Deactivate SOS
+                      <Button className="mt-6 bg-gray-800 hover:bg-gray-900" onClick={cancelSOS}>
+                        <X className="w-4 h-4 mr-1" />Deactivate SOS
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="nearby">
+            <Card className="border-violet-200">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between gap-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Bell className="w-4 h-4 text-violet-600" />Nearby SOS Notifications
+                  </CardTitle>
+                  <Button type="button" variant="outline" size="sm" onClick={loadNearbyAlerts} disabled={nearbyLoading}>
+                    <RefreshCw className={`w-3.5 h-3.5 mr-1 ${nearbyLoading ? "animate-spin" : ""}`} />Refresh
                   </Button>
-                </>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+                </div>
+                <CardDescription>
+                  Live feed of active SOS alerts around you from other users.
+                </CardDescription>
+                <div className="flex flex-wrap items-center gap-2 text-[11px] text-gray-500">
+                  <span className="rounded-full border px-2 py-0.5 bg-white">Status: {nearbyFetchStatus}</span>
+                  <span className="rounded-full border px-2 py-0.5 bg-white">Alerts: {nearbyAlerts.length}</span>
+                  <span className="rounded-full border px-2 py-0.5 bg-white">Last refresh: {nearbyLastRefreshedAt || "--"}</span>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {nearbyError && <p className="text-xs text-red-600">{nearbyError}</p>}
+                {!nearbyError && nearbyAlerts.length === 0 && (
+                  <p className="text-sm text-gray-500">No nearby active SOS alerts right now.</p>
+                )}
+                {nearbyAlerts.map((alert) => (
+                  <div key={alert._id} className="rounded-lg border p-3 bg-violet-50/40">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm text-gray-800" style={{ fontWeight: 600 }}>{alert.userName}</p>
+                      <Badge className="bg-red-600 text-white">ACTIVE</Badge>
+                    </div>
+                    <p className="text-sm text-gray-700 mt-1">{alert.message}</p>
+                    {getAlertCoordinates(alert) && (
+                      <p className="text-xs text-gray-600 mt-1">
+                        Location: {getAlertCoordinates(alert)?.latitude.toFixed(5)}, {getAlertCoordinates(alert)?.longitude.toFixed(5)}
+                      </p>
+                    )}
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-8 text-xs"
+                        onClick={() => openAlertLocation(alert)}
+                        disabled={!getAlertCoordinates(alert)}
+                      >
+                        <MapPin className="w-3.5 h-3.5 mr-1" />Open Location
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="h-8 text-xs bg-violet-600 hover:bg-violet-700"
+                        onClick={() => openAlertDirections(alert)}
+                        disabled={!getAlertCoordinates(alert)}
+                      >
+                        <ArrowLeft className="w-3.5 h-3.5 mr-1 rotate-135" />Directions
+                      </Button>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Triggered {new Date(alert.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    </p>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
 
         <div className="grid md:grid-cols-2 gap-6">
           {/* Emergency Contacts */}

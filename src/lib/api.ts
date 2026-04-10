@@ -186,6 +186,13 @@ export function createPost(input: { content: string; category?: string }) {
   });
 }
 
+export function updatePost(id: string, input: { content: string; category?: string }) {
+  return apiRequest<{ success: boolean; data: CommunityPost }>(`/api/v1/posts/${id}`, {
+    method: "PUT",
+    body: input,
+  });
+}
+
 export function likePost(id: string) {
   return apiRequest<{ success: boolean; data: CommunityPost }>(`/api/v1/posts/${id}/like`, {
     method: "POST",

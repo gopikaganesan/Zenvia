@@ -27,6 +27,7 @@ type Place = {
   type: string;
   lat: number;
   lon: number;
+  distanceKm?: number;
   distance?: string;
   phone?: string;
   hours?: string;
@@ -43,7 +44,7 @@ const OVERPASS_ENDPOINTS = [
 
 function buildOverpassQuery(lat: number, lon: number, radiusM: number, tags: string) {
   return `[out:json][timeout:15];(${tags.split("|").map(
-    (t) => `node${t}(around:${radiusM},${lat},${lon});way${t}(around:${radiusM},${lat},${lon});`
+    (t) => `node${t}(around:${radiusM},${lat},${lon});way${t}(around:${radiusM},${lat},${lon});relation${t}(around:${radiusM},${lat},${lon});`
   ).join("")});out center body;`;
 }
 
@@ -66,14 +67,21 @@ function parsePlaces(data: any, userLat: number, userLon: number): Place[] {
       const tags = el.tags || {};
       const lat = el.lat ?? el.center?.lat;
       const lon = el.lon ?? el.center?.lon;
-      if (!lat || !lon || !tags.name) return null;
+      if (lat == null || lon == null) return null;
       const dist = haversineKm(userLat, userLon, lat, lon);
+      const amenityType = tags.amenity || tags.healthcare || tags.shop || tags.office || "place";
+      const fallbackName = amenityType
+        .split("_")
+        .map((token: string) => token.charAt(0).toUpperCase() + token.slice(1))
+        .join(" ");
+
       return {
         id: el.id,
-        name: tags.name,
-        type: tags.amenity || tags.healthcare || tags.shop || "place",
+        name: tags.name || fallbackName,
+        type: amenityType,
         lat,
         lon,
+        distanceKm: dist,
         distance: dist < 1 ? `${Math.round(dist * 1000)} m` : `${dist.toFixed(1)} km`,
         phone: tags.phone || tags["contact:phone"],
         hours: tags.opening_hours,
@@ -83,7 +91,7 @@ function parsePlaces(data: any, userLat: number, userLon: number): Place[] {
       } as Place;
     })
     .filter(Boolean)
-    .sort((a: Place, b: Place) => parseFloat(a.distance || "999") - parseFloat(b.distance || "999"));
+    .sort((a: Place, b: Place) => (a.distanceKm || 999) - (b.distanceKm || 999));
 }
 
 async function fetchPlaces(lat: number, lon: number, tags: string): Promise<Place[]> {
@@ -134,8 +142,8 @@ export function NearbyServices() {
       try {
         const [h, s, p] = await Promise.all([
           fetchPlaces(lat, lon, '[amenity=hospital]|[amenity=clinic]|[amenity=doctors]|[healthcare=centre]'),
-          fetchPlaces(lat, lon, '[amenity=social_facility]|[amenity=community_centre]|[social_facility=shelter]'),
-          fetchPlaces(lat, lon, '[amenity=pharmacy]|[shop=chemist]'),
+          fetchPlaces(lat, lon, '[amenity=police]|[amenity=social_facility]|[amenity=community_centre]|[social_facility=shelter]|[social_facility=group_home]|[office=ngo]|[amenity=townhall]'),
+          fetchPlaces(lat, lon, '[amenity=pharmacy]|[shop=chemist]|[healthcare=pharmacy]|[dispensing=yes]'),
         ]);
         setHospitals(h);
         setSafeSpaces(s);

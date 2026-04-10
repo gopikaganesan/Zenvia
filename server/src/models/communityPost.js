@@ -20,7 +20,6 @@ const communityPostSchema = new mongoose.Schema(
     content: {
       type: String,
       required: true,
-      trim: true,
       maxlength: 2000,
     },
     likes: {
@@ -47,7 +46,6 @@ const communityPostSchema = new mongoose.Schema(
           content: {
             type: String,
             required: true,
-            trim: true,
             maxlength: 500,
           },
           createdAt: {

@@ -78,17 +78,46 @@ router.get("/", async (req, res, next) => {
 router.post("/", authMiddleware, async (req, res, next) => {
   try {
     const { content, category } = req.body;
-    if (!content || !content.trim()) {
+    const rawContent = typeof content === "string" ? content : "";
+    if (!rawContent.trim()) {
       return res.status(400).json({ success: false, message: "Content is required" });
     }
     const post = await CommunityPost.create({
       author: req.user._id,
       authorName: req.user.name,
       category: category || "General",
-      content: content.trim(),
+      content: rawContent,
     });
     const [enrichedPost] = await enrichPosts([post]);
     return res.status(201).json({ success: true, data: enrichedPost });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+// Update own post
+router.put("/:id", authMiddleware, async (req, res, next) => {
+  try {
+    const post = await CommunityPost.findById(req.params.id);
+    if (!post) return res.status(404).json({ success: false, message: "Post not found" });
+    if (!post.author.equals(req.user._id)) {
+      return res.status(403).json({ success: false, message: "Not authorized" });
+    }
+
+    const { content, category } = req.body;
+    if (typeof content === "string") {
+      if (!content.trim()) {
+        return res.status(400).json({ success: false, message: "Content is required" });
+      }
+      post.content = content;
+    }
+    if (typeof category === "string" && category.trim()) {
+      post.category = category;
+    }
+
+    await post.save();
+    const [enrichedPost] = await enrichPosts([post]);
+    return res.json({ success: true, data: enrichedPost });
   } catch (err) {
     return next(err);
   }
@@ -137,7 +166,8 @@ router.delete("/:id", authMiddleware, async (req, res, next) => {
 router.post("/:id/comments", authMiddleware, async (req, res, next) => {
   try {
     const { content } = req.body;
-    if (!content || !content.trim()) {
+    const rawContent = typeof content === "string" ? content : "";
+    if (!rawContent.trim()) {
       return res.status(400).json({ success: false, message: "Comment content is required" });
     }
 
@@ -147,7 +177,7 @@ router.post("/:id/comments", authMiddleware, async (req, res, next) => {
     post.comments.push({
       author: req.user._id,
       authorName: req.user.name,
-      content: content.trim(),
+      content: rawContent,
     });
 
     await post.save();

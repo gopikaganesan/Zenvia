@@ -442,11 +442,37 @@ export function CycleTracking() {
             </div>
 
             {/* Legend */}
-            <div className="flex flex-wrap gap-3 mt-4 pt-3 border-t text-xs text-gray-500">
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-pink-500" />Logged</span>
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-pink-200" />Predicted</span>
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-violet-200" />Fertile</span>
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-rose-300" />Ovulation</span>
+            <div className="mt-4 pt-3 border-t">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm text-gray-600">
+                <div className="flex items-start gap-2 rounded-lg border bg-white/70 px-3 py-2">
+                  <span className="inline-block w-4 h-4 rounded-full bg-pink-500 border-2 border-pink-600 shadow-sm mt-0.5" aria-hidden="true" />
+                  <div>
+                    <p className="font-medium text-gray-700">Logged</p>
+                    <p className="text-xs text-gray-500">Period dates you entered manually.</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2 rounded-lg border bg-white/70 px-3 py-2">
+                  <span className="inline-block w-4 h-4 rounded-full bg-pink-200 border-2 border-pink-400 shadow-sm mt-0.5" aria-hidden="true" />
+                  <div>
+                    <p className="font-medium text-gray-700">Predicted</p>
+                    <p className="text-xs text-gray-500">Estimated future period days.</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2 rounded-lg border bg-white/70 px-3 py-2">
+                  <span className="inline-block w-4 h-4 rounded-full bg-violet-200 border-2 border-violet-400 shadow-sm mt-0.5" aria-hidden="true" />
+                  <div>
+                    <p className="font-medium text-gray-700">Fertile</p>
+                    <p className="text-xs text-gray-500">Days with a higher chance of conception.</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2 rounded-lg border bg-white/70 px-3 py-2">
+                  <span className="inline-block w-4 h-4 rounded-full bg-rose-300 border-2 border-rose-500 shadow-sm mt-0.5" aria-hidden="true" />
+                  <div>
+                    <p className="font-medium text-gray-700">Ovulation</p>
+                    <p className="text-xs text-gray-500">The expected ovulation day in the cycle.</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
