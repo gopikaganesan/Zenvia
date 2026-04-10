@@ -12,10 +12,11 @@ Zenvia is a full-stack women’s safety and wellness platform built with React, 
 6. Environment Configuration
 7. Scripts
 8. Project Structure
-9. API Overview
-10. Nearby Services Search Behavior
-11. Troubleshooting
-12. License
+9. Architecture Diagram
+10. API Overview
+11. Nearby Services Search Behavior
+12. Troubleshooting
+13. License
 
 ## Overview
 
@@ -163,6 +164,36 @@ Zenvia/
 │       └── routes/        # API route handlers
 ├── package.json
 └── vite.config.ts
+```
+
+## Architecture Diagram
+
+```mermaid
+flowchart LR
+	A[User Browser] --> B[React + Vite Frontend]
+	B -->|REST /api/v1/*| C[Express Backend]
+	C --> D[(MongoDB Atlas)]
+	B -->|Nearby Services Query| E[Overpass API]
+	E --> B
+
+	subgraph App Modules
+		F[Cycle Tracking]
+		G[Community]
+		H[SOS]
+		I[Nearby Services]
+		J[Profile/Auth]
+	end
+
+	B --> F
+	B --> G
+	B --> H
+	B --> I
+	B --> J
+
+	H -->|Trigger / Nearby / Resolve| C
+	G -->|Posts / Likes / Comments| C
+	F -->|Cycle Entries| C
+	J -->|Register / Login / Me| C
 ```
 
 ## API Overview
