@@ -267,6 +267,12 @@ export function deleteCycleEntry(id: string) {
   });
 }
 
+export function deleteAllCycleEntries() {
+  return apiRequest<{ success: boolean; message: string }>("/api/v1/cycle-entries", {
+    method: "DELETE",
+  });
+}
+
 export function updateCycleEntry(
   id: string,
   input: {

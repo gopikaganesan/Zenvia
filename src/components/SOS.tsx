@@ -17,6 +17,7 @@ import {
   MessageSquare,
   Siren,
   RefreshCw,
+  Loader2,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
@@ -28,12 +29,8 @@ import {
 } from "./ui/dialog";
 import { Switch } from "./ui/switch";
 import { Progress } from "./ui/progress";
-import {
-  triggerSOS as apiTriggerSOS,
-  resolveSOS as apiResolveSOS,
-  getNearbyAlerts,
-  type SOSAlert,
-} from "@/lib/api";
+import { triggerSOS, resolveSOS, getNearbyAlerts } from "@/lib/api";
+import type { SOSAlert } from "@/lib/api";
 import { getStoredUser, isAuthenticated } from "@/lib/auth";
 import { getLocalityEmergencyDetails, type LocalityEmergencyDetails } from "@/lib/emergency";
 
@@ -62,6 +59,65 @@ function loadContacts() {
 
 // ─── Component ─────────────────────────────────────
 export function SOS() {
+  const currentUser = getStoredUser();
+  const [myActiveAlerts, setMyActiveAlerts] = useState<SOSAlert[]>([]);
+    const [loadingMyAlerts, setLoadingMyAlerts] = useState(false);
+    const [myAlertsError, setMyAlertsError] = useState("");
+    const [deactivatingId, setDeactivatingId] = useState<string | null>(null);
+
+    // Load user's own active SOS alerts
+    const loadMyActiveAlerts = useCallback(async () => {
+      if (!isAuthenticated() || !currentUser?.id) {
+        setMyActiveAlerts([]);
+        return;
+      }
+      setLoadingMyAlerts(true);
+      setMyAlertsError("");
+      try {
+        // Fetch all nearby alerts with large radius, then filter by user
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(async (pos) => {
+            try {
+              const res = await getNearbyAlerts(pos.coords.longitude, pos.coords.latitude, 1000);
+              setMyActiveAlerts(res.data.filter((a: SOSAlert) => a.active && a.user === currentUser.id));
+            } catch {
+              setMyAlertsError("Could not load your active SOS alerts");
+            } finally {
+              setLoadingMyAlerts(false);
+            }
+          }, () => {
+            setMyAlertsError("Location access required to fetch your SOS alerts");
+            setLoadingMyAlerts(false);
+          });
+        } else {
+          setMyAlertsError("Geolocation not supported");
+          setLoadingMyAlerts(false);
+        }
+      } catch {
+        setMyAlertsError("Could not load your active SOS alerts");
+        setLoadingMyAlerts(false);
+      }
+    }, [currentUser]);
+
+    // My Active Alerts are NOT fetched automatically on mount anymore.
+    // They will be fetched when the user clicks a manual refresh button.
+    // However, if the user wants a one-time initial load, we can keep it but
+    // since the user specifically asked for "manual fetch", I'll remove it.
+    useEffect(() => {
+      // loadMyActiveAlerts(); // Removed for manual fetch requirement
+    }, [loadMyActiveAlerts]);
+
+    const handleDeactivateSOS = async (id: string) => {
+      setDeactivatingId(id);
+      try {
+        await resolveSOS(id);
+        setMyActiveAlerts((prev) => prev.filter((a) => a._id !== id));
+      } catch {
+        // Optionally show error
+      } finally {
+        setDeactivatingId(null);
+      }
+    };
   const navigate = useNavigate();
   const [sosActivated, setSosActivated] = useState(false);
   const [countdown, setCountdown] = useState(5);
@@ -86,7 +142,7 @@ export function SOS() {
   const [nearbyFetchStatus, setNearbyFetchStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [nearbyLastRefreshedAt, setNearbyLastRefreshedAt] = useState<string>("");
 
-  const currentUser = getStoredUser();
+  
 
   // Persist contacts
   useEffect(() => { localStorage.setItem(CONTACTS_KEY, JSON.stringify(contacts)); }, [contacts]);
@@ -102,7 +158,7 @@ export function SOS() {
       navigator.geolocation.getCurrentPosition(
         async (pos) => {
           try {
-            const res = await apiTriggerSOS({
+            const res = await triggerSOS({
               longitude: pos.coords.longitude,
               latitude: pos.coords.latitude,
               message: selectedMessage,
@@ -175,9 +231,7 @@ export function SOS() {
 
   useEffect(() => {
     if (activeTab !== "nearby") return;
-    loadNearbyAlerts();
-    const interval = window.setInterval(loadNearbyAlerts, 30000);
-    return () => window.clearInterval(interval);
+    // loadNearbyAlerts(); // Removed for manual fetch requirement
   }, [activeTab, loadNearbyAlerts]);
 
   const getAlertCoordinates = (alert: SOSAlert) => {
@@ -214,7 +268,7 @@ export function SOS() {
     setDeliveryVerified(false);
 
     if (activeAlertId) {
-      try { await apiResolveSOS(activeAlertId); } catch {}
+      try { await resolveSOS(activeAlertId); } catch {}
       setActiveAlertId(null);
     }
   }, [activeAlertId]);
@@ -258,6 +312,61 @@ export function SOS() {
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 space-y-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+                  {/* My Active SOS Alerts Section */}
+                  <Card className="border-red-200 mb-8">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-base text-red-700"><Siren className="w-4 h-4" />My Active SOS Alerts</CardTitle>
+                    <CardDescription className="flex items-center justify-between">
+                      <span>Deactivate any previously triggered SOS alerts here.</span>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={loadMyActiveAlerts}
+                        disabled={loadingMyAlerts}
+                        className="h-7 border-red-200 text-red-700"
+                      >
+                        <RefreshCw className={`w-3 h-3 mr-1 ${loadingMyAlerts ? "animate-spin" : ""}`} />
+                        {loadingMyAlerts ? "Fetching..." : "Fetch Alerts"}
+                      </Button>
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {loadingMyAlerts && (
+                      <div className="flex items-center gap-2 py-4 justify-center text-gray-400">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span className="text-xs">Fetching your active alerts...</span>
+                      </div>
+                    )}
+                    {myAlertsError && <p className="text-xs text-red-600 bg-red-50 p-2 rounded border border-red-100">{myAlertsError}</p>}
+                    {!loadingMyAlerts && !myAlertsError && myActiveAlerts.length === 0 && (
+                      <div className="text-center py-6 border-2 border-dashed rounded-lg bg-gray-50/50">
+                        <p className="text-xs text-gray-500">Click "Fetch Alerts" to see your active SOS requests.</p>
+                      </div>
+                    )}
+                      <div className="space-y-3">
+                        {myActiveAlerts.map((alert) => (
+                          <div key={alert._id} className="flex items-center justify-between border rounded-lg p-3 bg-red-50">
+                            <div>
+                              <div className="flex items-center gap-2 mb-1">
+                                <Badge className="bg-red-600 text-white">ACTIVE</Badge>
+                                <span className="text-xs text-gray-700">{new Date(alert.createdAt).toLocaleString()}</span>
+                              </div>
+                              <div className="text-sm text-gray-800">{alert.message}</div>
+                            </div>
+                            <Button
+                              size="sm"
+                              className="bg-gray-800 hover:bg-gray-900 text-white"
+                              onClick={() => handleDeactivateSOS(alert._id)}
+                              disabled={deactivatingId === alert._id}
+                            >
+                              {deactivatingId === alert._id ? "Deactivating..." : "Deactivate"}
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="trigger"><Siren className="w-4 h-4 mr-1" />Trigger SOS</TabsTrigger>
             <TabsTrigger value="nearby"><Bell className="w-4 h-4 mr-1" />Nearby Alerts</TabsTrigger>
@@ -344,8 +453,16 @@ export function SOS() {
                   <CardTitle className="text-base flex items-center gap-2">
                     <Bell className="w-4 h-4 text-violet-600" />Nearby SOS Notifications
                   </CardTitle>
-                  <Button type="button" variant="outline" size="sm" onClick={loadNearbyAlerts} disabled={nearbyLoading}>
-                    <RefreshCw className={`w-3.5 h-3.5 mr-1 ${nearbyLoading ? "animate-spin" : ""}`} />Refresh
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={loadNearbyAlerts}
+                    disabled={nearbyLoading}
+                    className="border-violet-300 text-violet-700 hover:bg-violet-50"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${nearbyLoading ? "animate-spin" : ""}`} />
+                    {nearbyLoading ? "Refreshing..." : "Manual Refresh"}
                   </Button>
                 </div>
                 <CardDescription>

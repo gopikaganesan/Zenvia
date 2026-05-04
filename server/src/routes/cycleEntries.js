@@ -112,4 +112,17 @@ router.delete("/:id", async (req, res, next) => {
   }
 });
 
+// Delete all cycle entries for the authenticated user
+router.delete("/", async (req, res, next) => {
+  try {
+    const result = await CycleEntry.deleteMany({ user: req.user._id });
+    return res.json({
+      success: true,
+      message: `Deleted ${result.deletedCount} cycle entries`,
+    });
+  } catch (err) {
+    return next(err);
+  }
+});
+
 module.exports = router;

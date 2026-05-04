@@ -96,12 +96,17 @@ function parsePlaces(data: any, userLat: number, userLon: number): Place[] {
 
 async function fetchPlaces(lat: number, lon: number, tags: string): Promise<Place[]> {
   const query = buildOverpassQuery(lat, lon, 5000, tags);
-
+  let lastErr: any = null;
   for (const endpoint of OVERPASS_ENDPOINTS) {
     try {
+      // Log the endpoint and query for debugging (won't log in production build if console is disabled)
+      // eslint-disable-next-line no-console
+      console.debug("Overpass query ->", endpoint, query);
+
       const body = new URLSearchParams({ data: query }).toString();
       const res = await fetch(endpoint, {
         method: "POST",
+        mode: "cors",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
           Accept: "application/json",
@@ -109,16 +114,24 @@ async function fetchPlaces(lat: number, lon: number, tags: string): Promise<Plac
         body,
       });
       if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        if (res.status === 429) {
+          lastErr = new Error("Overpass API is currently rate-limited (Too Many Requests). Please wait a few minutes and try again.");
+        } else {
+          lastErr = new Error(`Overpass endpoint returned ${res.status} ${res.statusText} ${text}`);
+        }
+        // try next endpoint
         continue;
       }
       const json = await res.json();
       return parsePlaces(json, lat, lon);
-    } catch {
+    } catch (err) {
+      lastErr = err;
       continue;
     }
   }
 
-  throw new Error("Overpass API request failed");
+  throw lastErr || new Error("Overpass API request failed");
 }
 
 // ─── Component ──────────────────────────────────────
@@ -141,15 +154,29 @@ export function NearbyServices() {
       setError("");
       try {
         const [h, s, p] = await Promise.all([
-          fetchPlaces(lat, lon, '[amenity=hospital]|[amenity=clinic]|[amenity=doctors]|[healthcare=centre]'),
-          fetchPlaces(lat, lon, '[amenity=police]|[amenity=social_facility]|[amenity=community_centre]|[social_facility=shelter]|[social_facility=group_home]|[office=ngo]|[amenity=townhall]'),
-          fetchPlaces(lat, lon, '[amenity=pharmacy]|[shop=chemist]|[healthcare=pharmacy]|[dispensing=yes]'),
+          fetchPlaces(lat, lon, "[amenity=hospital]|[amenity=clinic]|[amenity=doctors]|[healthcare=centre]"),
+          // Expanded Safe Spaces: include fire stations, places of worship, libraries, etc.
+          fetchPlaces(
+            lat,
+            lon,
+            "[amenity=police]|[amenity=fire_station]|[amenity=social_facility]|[amenity=community_centre]|[social_facility=shelter]|[social_facility=group_home]|[office=ngo]|[amenity=townhall]|[amenity=place_of_worship]|[amenity=library]|[amenity=courthouse]|[amenity=embassy]",
+          ),
+          // Expanded Pharmacies: include more tags and shop types
+          fetchPlaces(
+            lat,
+            lon,
+            "[amenity=pharmacy]|[shop=chemist]|[shop=pharmacy]|[healthcare=pharmacy]|[dispensing=yes]",
+          ),
         ]);
         setHospitals(h);
         setSafeSpaces(s);
         setPharmacies(p);
-      } catch {
-        setError("Could not fetch nearby services. Please try again.");
+      } catch (err) {
+        setError(
+          `Could not fetch nearby services: ${
+            err instanceof Error ? err.message : "Unknown error"
+          }. Please check your connection and try again.`,
+        );
       } finally {
         setLoading(false);
       }
@@ -162,6 +189,7 @@ export function NearbyServices() {
       setError("Geolocation not supported by your browser.");
       return;
     }
+    setLoading(true);
     setLocationLabel("Detecting location…");
     navigator.geolocation.getCurrentPosition(
       (pos) => {
@@ -172,9 +200,11 @@ export function NearbyServices() {
         getLocalityEmergencyDetails(coords.lat, coords.lon).then(setEmergencyDetails);
       },
       () => {
-        setError("Location access denied. Please enable location permissions.");
+        setError("Location access denied or timed out. Please enable location permissions and try again.");
         setLocationLabel("Location unavailable");
+        setLoading(false);
       },
+      { timeout: 10000 },
     );
   }, [loadData]);
 
@@ -234,7 +264,15 @@ export function NearbyServices() {
           </CardContent>
         </Card>
 
-        {error && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3 mb-6">{error}</p>}
+        {error && (
+          <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3 mb-6">
+            <div>{error}</div>
+            <div className="mt-2 flex items-center gap-2">
+              <Button size="sm" onClick={requestLocation} className="bg-blue-600 hover:bg-blue-700">Retry</Button>
+              <span className="text-xs text-gray-500">If this persists the Overpass API may be rate-limited or blocked by CORS. Try again later.</span>
+            </div>
+          </div>
+        )}
 
         {/* Tabs */}
         <Tabs value={tab} onValueChange={setTab} className="space-y-4">
@@ -322,67 +360,76 @@ export function NearbyServices() {
 }
 
 // ─── Place list sub-component ────────────────────────
-function PlaceList({
-  places,
-  onDirections,
-  emptyLabel,
-  accentColor,
-}: {
+type PlaceListProps = {
   places: Place[];
   onDirections: (lat: number, lon: number) => void;
   emptyLabel: string;
   accentColor: string;
-}) {
-  if (places.length === 0) {
-    return <p className="text-sm text-gray-400 text-center py-8">{emptyLabel}</p>;
-  }
+};
 
-  const borderClass = accentColor === "blue" ? "border-l-blue-500" : accentColor === "violet" ? "border-l-violet-500" : "border-l-emerald-500";
-  const badgeClass = accentColor === "blue" ? "text-blue-600" : accentColor === "violet" ? "text-violet-600" : "text-emerald-600";
+function PlaceList({ places, onDirections, emptyLabel, accentColor }: PlaceListProps) {
+  // Helper for border and badge color
+  const borderClass =
+    accentColor === "blue"
+      ? "border-blue-600"
+      : accentColor === "violet"
+      ? "border-violet-600"
+      : "border-emerald-600";
+  const badgeClass =
+    accentColor === "blue"
+      ? "bg-blue-100 text-blue-700"
+      : accentColor === "violet"
+      ? "bg-violet-100 text-violet-700"
+      : "bg-emerald-100 text-emerald-700";
 
   return (
-    <div className="space-y-3">
-      {places.map((p) => (
-        <Card key={p.id} className={`border-l-4 ${borderClass} hover:shadow-sm transition-shadow`}>
-          <CardContent className="py-4 space-y-2">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <p className="text-sm truncate" style={{ fontWeight: 600 }}>{p.name}</p>
-                {p.address && <p className="text-xs text-gray-500 truncate">{p.address}</p>}
-              </div>
-              <div className="flex-shrink-0 text-right">
-                <span className={`text-sm ${badgeClass}`} style={{ fontWeight: 600 }}>{p.distance}</span>
-                {p.emergency && <Badge className="bg-red-600 ml-2 text-xs">ER</Badge>}
-              </div>
-            </div>
-
-            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
-              {p.hours && (
-                <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{p.hours}</span>
-              )}
-              {p.phone && (
-                <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{p.phone}</span>
-              )}
-            </div>
-
-            <div className="flex gap-2 pt-1">
-              <Button size="sm" variant="outline" className="flex-1" onClick={() => onDirections(p.lat, p.lon)}>
-                <Navigation className="w-3 h-3 mr-1" />Directions
-              </Button>
-              {p.phone && (
-                <Button size="sm" className={`flex-1 ${accentColor === "blue" ? "bg-blue-600 hover:bg-blue-700" : accentColor === "violet" ? "bg-violet-600 hover:bg-violet-700" : "bg-emerald-600 hover:bg-emerald-700"}`} asChild>
-                  <a href={`tel:${p.phone}`}><Phone className="w-3 h-3 mr-1" />Call</a>
-                </Button>
-              )}
-              {p.website && (
-                <Button size="sm" variant="ghost" asChild>
-                  <a href={p.website} target="_blank" rel="noopener noreferrer"><ExternalLink className="w-3 h-3" /></a>
-                </Button>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+    <div className="grid gap-4">
+      {places.length === 0 ? (
+        <div className="text-center text-gray-400 py-8">{emptyLabel}</div>
+      ) : (
+        places.map((p) => {
+          // Highlight police stations
+          const isPolice = p.type === "police";
+          return (
+            <Card key={p.id} className={`border-l-4 ${isPolice ? "border-blue-700" : borderClass} hover:shadow-sm transition-shadow`}>
+              <CardContent className="py-4 space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-sm truncate" style={{ fontWeight: 600 }}>{p.name}{isPolice && <span className="ml-2 text-blue-700 font-bold">(Police)</span>}</p>
+                    {p.address && <p className="text-xs text-gray-500 truncate">{p.address}</p>}
+                  </div>
+                  <div className="flex-shrink-0 text-right">
+                    <span className={`text-sm ${badgeClass}`} style={{ fontWeight: 600 }}>{p.distance}</span>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+                  {p.hours && (
+                    <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{p.hours}</span>
+                  )}
+                  {p.phone && (
+                    <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{p.phone}</span>
+                  )}
+                </div>
+                <div className="flex gap-2 pt-1">
+                  <Button size="sm" variant="outline" className="flex-1" onClick={() => onDirections(p.lat, p.lon)}>
+                    <Navigation className="w-3 h-3 mr-1" />Directions
+                  </Button>
+                  {p.phone && (
+                    <Button size="sm" className={`flex-1 ${accentColor === "blue" ? "bg-blue-600 hover:bg-blue-700" : accentColor === "violet" ? "bg-violet-600 hover:bg-violet-700" : "bg-emerald-600 hover:bg-emerald-700"}`} asChild>
+                      <a href={`tel:${p.phone}`}><Phone className="w-3 h-3 mr-1" />Call</a>
+                    </Button>
+                  )}
+                  {p.website && (
+                    <Button size="sm" variant="ghost" asChild>
+                      <a href={p.website} target="_blank" rel="noopener noreferrer"><ExternalLink className="w-3 h-3" /></a>
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })
+      )}
     </div>
   );
 }

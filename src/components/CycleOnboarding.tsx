@@ -170,7 +170,7 @@ export function CycleOnboarding({ onComplete }: CycleOnboardingProps) {
             </Button>
 
             <p className="text-xs text-gray-400 mt-6 max-w-sm mx-auto">
-              Your data stays private and is only used to personalize your cycle predictions.
+              Privacy by Design: Your data stays <strong>exclusively on this device</strong> and is never uploaded to any server.
             </p>
           </div>
         )}

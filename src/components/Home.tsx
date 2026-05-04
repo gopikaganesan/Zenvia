@@ -13,7 +13,7 @@ const features = [
   {
     icon: Calendar,
     title: "Cycle Tracking",
-    desc: "Private period tracking stored only on your device.",
+    desc: "Track your cycle privately. Your health data stays locally on your device for absolute privacy.",
     path: "/cycle-tracking",
     color: "text-pink-600",
     bg: "bg-pink-50",
@@ -102,9 +102,9 @@ export function Home() {
       {/* Privacy note */}
       <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-20 mt-6">
         <div className="rounded-xl border border-violet-200 bg-violet-50 p-6">
-          <h3 className="text-base mb-2 text-violet-800" style={{ fontWeight: 600 }}>Privacy by design</h3>
+          <h3 className="text-base mb-2 text-violet-800" style={{ fontWeight: 600 }}>Privacy by Design</h3>
           <p className="text-sm text-violet-700">
-            Period data never leaves your device. Only community posts and SOS location are stored on the server — nothing else.
+            Your health and safety are our priority. <strong>Menstrual cycle data is stored only on your device</strong> and is never uploaded to any cloud or server. Community posts and SOS alerts are the only features that use secure server-side processing.
           </p>
         </div>
       </section>

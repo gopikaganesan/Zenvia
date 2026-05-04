@@ -10,11 +10,14 @@ import {
   Check,
   Trash2,
   Pencil,
+  Loader2,
+  Shield,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Input } from "./ui/input";
+import { Switch } from "./ui/switch";
 import { CycleOnboarding } from "./CycleOnboarding";
 import {
   createCycleEntry,
@@ -108,6 +111,7 @@ const CYCLE_LEN = 28;
 
 // ─── Component ───────────────────────────────────────────────
 export function CycleTracking() {
+  const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
   const navigate = useNavigate();
 
   const [isOnboarded, setIsOnboarded] = useState(() => {
@@ -120,8 +124,6 @@ export function CycleTracking() {
 
   const [entries, setEntries] = useState<LocalEntry[]>([]);
   const [isLoadingEntries, setIsLoadingEntries] = useState(true);
-  const [storageMode, setStorageMode] = useState<"local" | "server">("local");
-  const [syncMessage, setSyncMessage] = useState("");
   const [viewMonth, setViewMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<string>(getDateKey(new Date()));
 
@@ -133,49 +135,15 @@ export function CycleTracking() {
   const [showForm, setShowForm] = useState(false);
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
 
-  const toLocalEntry = (entry: ApiCycleEntry): LocalEntry => ({
-    id: entry._id,
-    periodStartDate: entry.periodStartDate,
-    periodEndDate: entry.periodEndDate,
-    flowLevel: entry.flowLevel,
-    createdAt: entry.createdAt,
-  });
-
-  const loadCycleEntries = useCallback(async () => {
+  useEffect(() => {
     const local = loadEntries();
-
-    if (!isAuthenticated()) {
-      setStorageMode("local");
-      setSyncMessage("");
-      setEntries(local);
-      setIsLoadingEntries(false);
-      return;
-    }
-
-    setIsLoadingEntries(true);
-    try {
-      const response = await listCycleEntries();
-      setEntries(response.data.map(toLocalEntry));
-      setStorageMode("server");
-      setSyncMessage("");
-    } catch {
-      setEntries(local);
-      setStorageMode("local");
-      setSyncMessage("Server sync unavailable. Using local device storage.");
-    } finally {
-      setIsLoadingEntries(false);
-    }
+    setEntries(local);
+    setIsLoadingEntries(false);
   }, []);
 
   useEffect(() => {
-    loadCycleEntries();
-  }, [loadCycleEntries]);
-
-  useEffect(() => {
-    if (storageMode === "local") {
-      saveEntries(entries);
-    }
-  }, [entries, storageMode]);
+    saveEntries(entries);
+  }, [entries]);
 
   const handleOnboardingComplete = () => {
     try { localStorage.setItem(ONBOARDING_KEY, "true"); } catch {}
@@ -253,69 +221,44 @@ export function CycleTracking() {
     if (new Date(endDate) < new Date(startDate)) { setError("End must be after start"); return; }
     setError("");
 
-    try {
-      if (editingEntryId) {
-        if (storageMode === "server" && isAuthenticated()) {
-          const response = await updateCycleEntry(editingEntryId, {
-            periodStartDate: startDate,
-            periodEndDate: endDate,
-            flowLevel: flow,
-          });
-          setEntries((prev) =>
-            prev.map((entry) => (entry.id === editingEntryId ? toLocalEntry(response.data) : entry)),
-          );
-        } else {
-          setEntries((prev) =>
-            prev.map((entry) =>
-              entry.id === editingEntryId
-                ? {
-                    ...entry,
-                    periodStartDate: startDate,
-                    periodEndDate: endDate,
-                    flowLevel: flow,
-                  }
-                : entry,
-            ),
-          );
-        }
-      } else {
-        if (storageMode === "server" && isAuthenticated()) {
-          const response = await createCycleEntry({
-            periodStartDate: startDate,
-            periodEndDate: endDate,
-            flowLevel: flow,
-          });
-          setEntries((prev) => [toLocalEntry(response.data), ...prev]);
-        } else {
-          const entry: LocalEntry = {
-            id: Date.now().toString(),
-            periodStartDate: startDate,
-            periodEndDate: endDate,
-            flowLevel: flow,
-            createdAt: new Date().toISOString(),
-          };
-          setEntries((prev) => [entry, ...prev]);
-        }
-      }
-
-      setStartDate("");
-      setEndDate("");
-      setShowForm(false);
-      setEditingEntryId(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save entry");
+    if (editingEntryId) {
+      setEntries((prev) =>
+        prev.map((entry) =>
+          entry.id === editingEntryId
+            ? {
+                ...entry,
+                periodStartDate: startDate,
+                periodEndDate: endDate,
+                flowLevel: flow,
+              }
+            : entry,
+        ),
+      );
+    } else {
+      const entry: LocalEntry = {
+        id: Date.now().toString(),
+        periodStartDate: startDate,
+        periodEndDate: endDate,
+        flowLevel: flow,
+        createdAt: new Date().toISOString(),
+      };
+      setEntries((prev) => [entry, ...prev]);
     }
+
+    setStartDate("");
+    setEndDate("");
+    setShowForm(false);
+    setEditingEntryId(null);
   };
 
   const deleteEntry = async (id: string) => {
-    try {
-      if (storageMode === "server" && isAuthenticated()) {
-        await deleteCycleEntry(id);
-      }
-      setEntries((prev) => prev.filter((e) => e.id !== id));
-    } catch {
-      setError("Could not delete entry");
-    }
+    setEntries((prev) => prev.filter((e) => e.id !== id));
+  };
+
+  const handleDeleteAll = () => {
+    localStorage.removeItem(ENTRIES_KEY);
+    setEntries([]);
+    setShowDeleteAllDialog(false);
   };
 
   const editEntry = (entry: LocalEntry) => {
@@ -359,16 +302,54 @@ export function CycleTracking() {
               <Droplet className="w-5 h-5" />
               <h1 className="text-2xl" style={{ fontWeight: 700 }}>Cycle Tracking</h1>
             </div>
-            <Badge className="bg-white/20 text-white border-0">
-              {storageMode === "server" ? "Synced" : "Local mode"}
-            </Badge>
+            <div className="flex items-center gap-4">
+              <Badge variant="outline" className="bg-white/10 text-white border-white/20 px-3 py-1 gap-1.5">
+                <Shield className="w-3.5 h-3.5" /> Privacy Protected
+              </Badge>
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-white/40 bg-white/10 text-white hover:bg-white/20"
+                onClick={() => setShowDeleteAllDialog(true)}
+              >
+                <Trash2 className="w-3.5 h-3.5 mr-1" /> Clear Local Data
+              </Button>
+            </div>
           </div>
         </div>
       </div>
 
+      {/* Delete all dialog */}
+      {showDeleteAllDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-lg p-8 max-w-sm w-full">
+            <h2 className="text-lg font-bold mb-2 text-gray-900">Clear All Cycle Data</h2>
+            <p className="text-sm text-gray-700 mb-6">Are you sure? This will permanently remove all cycle data from this device. It cannot be recovered.</p>
+            <div className="flex gap-3 justify-end">
+              <Button variant="outline" onClick={() => setShowDeleteAllDialog(false)}>Cancel</Button>
+              <Button className="bg-red-600 hover:bg-red-700 text-white" onClick={handleDeleteAll}>
+                Yes, Delete Everything
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 space-y-8 py-6">
+        <div className="p-4 bg-violet-50 rounded-xl border border-violet-100 flex items-start gap-4">
+          <div className="p-2 bg-violet-100 rounded-lg text-violet-600">
+            <Shield className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-violet-900 mb-1">Local-Only Privacy</h3>
+            <p className="text-xs text-violet-700 leading-relaxed">
+              Your menstrual cycle data is stored <strong>only on this device</strong>. Zenvia does not upload this information to any server or cloud, ensuring maximum privacy for your health records.
+            </p>
+          </div>
+        </div>
+
         {/* Phase summary strip */}
-        <Card className="border-pink-200 mb-12">
+        <Card className="border-pink-200">
           <CardContent className="py-3">
             <div className="flex items-center justify-between">
               <div>
@@ -395,8 +376,12 @@ export function CycleTracking() {
             </div>
           </CardHeader>
           <CardContent>
-            {isLoadingEntries && <p className="text-xs text-gray-500 mb-2">Loading cycle history...</p>}
-            {syncMessage && <p className="text-xs text-amber-600 mb-2">{syncMessage}</p>}
+            {isLoadingEntries && (
+              <div className="flex items-center gap-2 py-4 justify-center text-gray-400">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span className="text-xs font-medium">Loading local history...</span>
+              </div>
+            )}
 
             {/* Weekday headers */}
             <div className="grid text-center mb-1" style={{ gridTemplateColumns: "repeat(7, minmax(0, 1fr))" }}>
@@ -447,29 +432,29 @@ export function CycleTracking() {
                 <div className="flex items-start gap-2 rounded-lg border bg-white/70 px-3 py-2">
                   <span className="inline-block w-4 h-4 rounded-full bg-pink-500 border-2 border-pink-600 shadow-sm mt-0.5" aria-hidden="true" />
                   <div>
-                    <p className="font-medium text-gray-700">Logged</p>
-                    <p className="text-xs text-gray-500">Period dates you entered manually.</p>
+                    <p className="font-medium text-gray-700 text-xs">Logged</p>
+                    <p className="text-[10px] text-gray-500 leading-tight">Your recorded period dates.</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-2 rounded-lg border bg-white/70 px-3 py-2">
                   <span className="inline-block w-4 h-4 rounded-full bg-pink-200 border-2 border-pink-400 shadow-sm mt-0.5" aria-hidden="true" />
                   <div>
-                    <p className="font-medium text-gray-700">Predicted</p>
-                    <p className="text-xs text-gray-500">Estimated future period days.</p>
+                    <p className="font-medium text-gray-700 text-xs">Predicted</p>
+                    <p className="text-[10px] text-gray-500 leading-tight">Estimated future period.</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-2 rounded-lg border bg-white/70 px-3 py-2">
                   <span className="inline-block w-4 h-4 rounded-full bg-violet-200 border-2 border-violet-400 shadow-sm mt-0.5" aria-hidden="true" />
                   <div>
-                    <p className="font-medium text-gray-700">Fertile</p>
-                    <p className="text-xs text-gray-500">Days with a higher chance of conception.</p>
+                    <p className="font-medium text-gray-700 text-xs">Fertile</p>
+                    <p className="text-[10px] text-gray-500 leading-tight">Potential conception days.</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-2 rounded-lg border bg-white/70 px-3 py-2">
                   <span className="inline-block w-4 h-4 rounded-full bg-rose-300 border-2 border-rose-500 shadow-sm mt-0.5" aria-hidden="true" />
                   <div>
-                    <p className="font-medium text-gray-700">Ovulation</p>
-                    <p className="text-xs text-gray-500">The expected ovulation day in the cycle.</p>
+                    <p className="font-medium text-gray-700 text-xs">Ovulation</p>
+                    <p className="text-[10px] text-gray-500 leading-tight">Expected ovulation day.</p>
                   </div>
                 </div>
               </div>
@@ -479,7 +464,7 @@ export function CycleTracking() {
 
         {/* Log button + form */}
         {!showForm ? (
-          <Button onClick={() => setShowForm(true)} className="w-full bg-pink-600 hover:bg-pink-700 mb-10">
+          <Button onClick={() => setShowForm(true)} className="w-full bg-pink-600 hover:bg-pink-700 mb-10 shadow-lg">
             <Plus className="w-4 h-4 mr-2" />Log Period
           </Button>
         ) : (
@@ -540,7 +525,7 @@ export function CycleTracking() {
         {entries.length > 0 && (
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Recent Entries</CardTitle>
+              <CardTitle className="text-base">Cycle History</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               {sortedEntries.slice(0, 8).map((e) => (
@@ -567,11 +552,12 @@ export function CycleTracking() {
           </Card>
         )}
 
-        <p className="text-xs text-center text-gray-400 mt-4">
-          {storageMode === "server"
-            ? "Cycle data is synced to your account so it is available across devices."
-            : "Cycle data is currently stored only on this device."}
-        </p>
+        <div className="text-center space-y-2 mt-8">
+          <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">Privacy by Design</p>
+          <p className="text-xs text-gray-400 max-w-xs mx-auto">
+            Your data stays in your browser's local storage. No health data is transmitted to Zenvia servers.
+          </p>
+        </div>
       </div>
     </div>
   );
